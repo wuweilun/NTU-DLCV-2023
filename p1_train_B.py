@@ -193,7 +193,9 @@ for epoch in range(epochs):
     if val_accuracy > best_val_accuracy:
         best_val_accuracy = val_accuracy
         # Save the trained model with the best validation accuracy
-        torch.save(classifier.state_dict(), 'P1_B_best_custom_efficientnetv2_model.pth')
+        torch.save(classifier.state_dict(), f'P1_B_best_efficientnetv2_model_epoch_{epoch}.pth')
+    if (epoch+1)%10 == 0:
+        torch.save(classifier.state_dict(), f'P1_B_efficientnetv2_model_epoch_{epoch}.pth')
 
 print(f"Best Validation Accuracy: {best_val_accuracy}")
 

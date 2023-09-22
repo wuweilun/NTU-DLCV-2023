@@ -232,7 +232,6 @@ for epoch in range(epochs):
         optimizer.step()
         train_loss += loss.item()
         progress_bar.set_postfix(loss=loss.item())
-        
         # Calculate training accuracy
         _, predicted = outputs.max(1)
         total += labels.size(0)
@@ -272,9 +271,9 @@ for epoch in range(epochs):
     if val_accuracy > best_val_accuracy:
         best_val_accuracy = val_accuracy
         # Save the trained model with the best validation accuracy
-        torch.save(classifier.state_dict(), 'P1_A_best_custom_resnet_model.pth')
-    if epoch %10 == 0:
-        torch.save(classifier.state_dict(), f'P1_A_custom_resnet_model_epoch{epoch}.pth')
+        torch.save(classifier.state_dict(), f'P1_A_best_resnet_model_epoch_{epoch}.pth')
+    if (epoch+1)%10 == 0:
+        torch.save(classifier.state_dict(), f'P1_A_resnet_model_epoch_{epoch}.pth')
         
     ''' This part moves to p1_visualize_and_accuracy.py to avoid cuda error
     # Perform PCA & TSNE visualization
