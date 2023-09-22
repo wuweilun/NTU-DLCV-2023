@@ -273,7 +273,10 @@ for epoch in range(epochs):
         best_val_accuracy = val_accuracy
         # Save the trained model with the best validation accuracy
         torch.save(classifier.state_dict(), 'P1_A_best_custom_resnet_model.pth')
+    if epoch %10 == 0:
+        torch.save(classifier.state_dict(), f'P1_A_custom_resnet_model_epoch{epoch}.pth')
         
+    ''' This part moves to p1_visualize_and_accuracy.py to avoid cuda error
     # Perform PCA & TSNE visualization
     if epoch % 10 == 0:  # adjust the frequency of PCA visualization
         classifier.eval()  # Set the model to evaluation mode for PCA
@@ -343,7 +346,7 @@ for epoch in range(epochs):
         plt.close()
         # Record the PCA results for later analysis or comparison
         pca_results.append((epoch + 1, pca_result, pca_labels))
-
+        '''
         
 print(f"Best Validation Accuracy: {best_val_accuracy}")
 
