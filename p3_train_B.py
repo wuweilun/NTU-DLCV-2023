@@ -11,7 +11,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from torchvision import models
-import torchsummary 
+#import torchsummary 
 from torch.optim import lr_scheduler
 
 from PIL import Image
@@ -95,8 +95,8 @@ validation_dataloader = DataLoader(validation_dataset, batch_size=batch_size, sh
 # Initialize the custom model
 num_class = 7
 epochs = 100
-lr = 0.1
-checkpoint = True
+lr = 0.0001
+checkpoint = False
 checkpoint_name = 'P3_B_best_deeplabv3_resnet50_model_epoch_5.pth'
 checkpoint_path = os.path.join('./model_checkpoint', checkpoint_name)
 
@@ -141,8 +141,9 @@ model = models.segmentation.deeplabv3_resnet50(num_classes = num_class, weight='
 
 # Define loss function and optimizer
 criterion = FocalLoss()
-optimizer = optim.SGD(model.parameters(), lr=lr, weight_decay=1e-4)
-scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
+optimizer = optim.AdamW(model.parameters(), lr=lr)
+#optimizer = optim.SGD(model.parameters(), lr=lr, weight_decay=1e-4)
+#scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
 
 # Lists to record training loss, validation loss results
 train_loss_record = []
@@ -159,7 +160,7 @@ if checkpoint is True:
     epoch = checkpoint_info['epoch'] + 1
     model.load_state_dict(checkpoint_info['model_state_dict'])
     optimizer.load_state_dict(checkpoint_info['optimizer_state_dict'])
-    scheduler.load_state_dict(checkpoint_info['scheduler_state_dict'])
+    #scheduler.load_state_dict(checkpoint_info['scheduler_state_dict'])
 # Training loop
 while epoch < epochs:
     model.train()  # Set the model to training mode
@@ -184,7 +185,7 @@ while epoch < epochs:
         #labels_list.append(labels.detach().cpu().numpy().astype(np.int64))
         #pred_list.append(predicted.detach().cpu().numpy().astype(np.int64))
         
-    scheduler.step()
+    #scheduler.step()
     # Calculate average training loss, and record them
     avg_train_loss = train_loss / len(train_dataloader)
     #train_miou = mean_iou_score(np.concatenate(pred_list, axis=0), np.concatenate(labels_list, axis=0))
@@ -226,7 +227,7 @@ while epoch < epochs:
             'epoch': epoch,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
-            'scheduler_state_dict': scheduler.state_dict(),
+            #'scheduler_state_dict': scheduler.state_dict(),
         }
         # Save the trained model with the best validation mIOU
         checkpoint_path = os.path.join('./model_checkpoint', f'P3_B_best_deeplabv3_resnet50_model_epoch_{epoch}.pth')
@@ -236,7 +237,7 @@ while epoch < epochs:
             'epoch': epoch,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
-            'scheduler_state_dict': scheduler.state_dict(),
+            #'scheduler_state_dict': scheduler.state_dict(),
         }
         checkpoint_path = os.path.join('./model_checkpoint', f'P3_B_deeplabv3_resnet50_model_epoch_{epoch}.pth')
         torch.save(checkpoint, checkpoint_path)

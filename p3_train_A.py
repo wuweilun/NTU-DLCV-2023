@@ -9,7 +9,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from torchvision import models
-import torchsummary 
+#import torchsummary 
 
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -85,16 +85,16 @@ train_dataset = CustomDataset(train_data_folder, transform=train_transform, is_t
 validation_dataset = CustomDataset(validation_data_folder, transform=validation_transform, is_train=True)
 
 # Use DataLoaders to load the data
-batch_size = 8
-train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4,  pin_memory=True)
-validation_dataloader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=True, num_workers=4,  pin_memory=True)
+batch_size = 4
+train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=2,  pin_memory=True)
+validation_dataloader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=True, num_workers=2,  pin_memory=True)
 
 # Initialize the custom model
 num_class = 7
 epochs = 50
 lr = 1e-4
 checkpoint = True
-checkpoint_name = 'P3_A_best_vggfcn32_model_epoch_1.pth'
+checkpoint_name = 'P3_A_vggfcn32_model_epoch_19.pth'
 checkpoint_path = os.path.join('./model_checkpoint', checkpoint_name)
 
 # Define a custom model
@@ -180,7 +180,7 @@ def mean_iou_score(pred, labels):
 
 # Create an instance of the FCN32s model
 model = VGG_FCN32(num_class).to(device)
-torchsummary.summary(model, input_size=(3, 512, 512))
+#torchsummary.summary(model, input_size=(3, 512, 512))
 
 # Define loss function and optimizer
 criterion = FocalLoss()
@@ -190,7 +190,7 @@ optimizer = optim.AdamW(model.parameters(), lr=lr)
 train_loss_record = []
 validation_loss_record = []
 validation_miou_record = []
-best_val_miou = 0.0  # Initialize the best validation mIOU
+best_val_miou = 0.69  # Initialize the best validation mIOU
 best_val_loss = 100.0
 epoch = 0
 
