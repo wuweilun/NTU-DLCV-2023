@@ -62,34 +62,30 @@ train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True
 
 # Initialize a ResNet model without pretrained weights
 resnet = models.resnet50(weights=None).to(device)
-
+resnet.fc = nn.Linear(2048, 64) # trick, we know that total have 64 classes
 model = BYOL(
     resnet,
     image_size = 128,
     hidden_layer = 'avgpool',
-    #use_momentum = False,
+    use_momentum = False,
 )
 
 # Initialize the custom model
-lr = 0.1
-checkpoint = False
-checkpoint_name = ''
+lr = 0.0003
+checkpoint = True
+checkpoint_name = 'P2_best_byol_model_epoch_38.pth'
 checkpoint_path = os.path.join('./model_checkpoint', checkpoint_name)
 
 # Define optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
-# # Define warm-up scheduler
-# warmup_epochs = 10
-# warmup_scheduler = LambdaLR(optimizer, lambda epoch: epoch / warmup_epochs)
-
 # Define CosineAnnealingLR scheduler for later epochs
-cosine_annealing_epochs = 800
-cosine_annealing_scheduler = CosineAnnealingLR(optimizer, cosine_annealing_epochs)
+#cosine_annealing_epochs = 800
+#cosine_annealing_scheduler = CosineAnnealingLR(optimizer, cosine_annealing_epochs)
 
-epochs = cosine_annealing_epochs
+epochs = 350
 epoch = 0
-best_train_loss = 500.0
+best_train_loss = 0.3
 train_loss_record = []
 
 if checkpoint is True:
@@ -101,7 +97,7 @@ if checkpoint is True:
     # if epoch < warmup_epochs:
     #     warmup_scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
     # else:
-    cosine_annealing_scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+    #cosine_annealing_scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
 
 while epoch <epochs:
     model.train()  # Set the model to training mode
@@ -113,20 +109,20 @@ while epoch <epochs:
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        model.update_moving_average()
+        #model.update_moving_average()
         train_loss += loss.item()
         progress_bar.set_postfix(loss=loss.item())
-        
+
     avg_train_loss = train_loss / len(train_dataloader)
     train_loss_record.append(avg_train_loss)
     print(f"Training Loss: {avg_train_loss:.4f}")
-    
+
     # Update the learning rate using the warm-up scheduler for the initial epochs
     # if epoch < warmup_epochs:
     #     warmup_scheduler.step()
     # else:
         # Switch to CosineAnnealingLR scheduler
-    cosine_annealing_scheduler.step()
+    #cosine_annealing_scheduler.step()
 
     # Check if the current model has the best train loss
     if avg_train_loss < best_train_loss:
@@ -135,31 +131,33 @@ while epoch <epochs:
             'epoch' : epoch,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
-            'scheduler_state_dict': cosine_annealing_scheduler.state_dict(),
+            #'scheduler_state_dict': cosine_annealing_scheduler.state_dict(),
             # 'scheduler_state_dict': warmup_scheduler.state_dict() if epoch < warmup_epochs else cosine_annealing_scheduler.state_dict(),
         }
-        checkpoint_path = os.path.join('./model_checkpoint', f'P2_best_byol_model_epoch_{epoch}.pth')
+        checkpoint_path = os.path.join('./model_checkpoint', f'P2_best_byol_model_setting4_epoch_{epoch}.pth')
         torch.save(checkpoint, checkpoint_path)
 
     # Save model, optimizer, scheduler, and learning rate every save_every_n_epochs epochs
-    if (epoch + 1) % 10 == 0:
+    if (epoch + 1) % 30 == 0:
         checkpoint = {
             'epoch' : epoch,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
-            'scheduler_state_dict': cosine_annealing_scheduler.state_dict(),
+            #'scheduler_state_dict': cosine_annealing_scheduler.state_dict(),
             #'scheduler_state_dict': warmup_scheduler.state_dict() if epoch < warmup_epochs else cosine_annealing_scheduler.state_dict(),
         }
-        checkpoint_path = os.path.join('./model_checkpoint', f'P2_byol_model_epoch_{epoch}.pth')
+        checkpoint_path = os.path.join('./model_checkpoint', f'P2_byol_model_setting4_epoch_{epoch}.pth')
         torch.save(checkpoint, checkpoint_path)
+
     epoch+=1
     
-# Plot and save the training and validation loss curves
-plt.figure(figsize=(12, 6))
-plt.plot(train_loss_record, label='Training Loss', marker='o')
-plt.title('P2_BYOL_Training Loss')
-plt.xlabel('Epoch')
-plt.ylabel('Loss')
-plt.legend()
-plt.grid(True)
-plt.savefig('p2_BYOL_loss_curves.png')
+
+# # Plot and save the training and validation loss curves
+# plt.figure(figsize=(12, 6))
+# plt.plot(train_loss_record, label='Training Loss', marker='o')
+# plt.title('P2_BYOL_Training Loss')
+# plt.xlabel('Epoch')
+# plt.ylabel('Loss')
+# plt.legend()
+# plt.grid(True)
+# plt.savefig('p2_BYOL_loss_curves.png')
