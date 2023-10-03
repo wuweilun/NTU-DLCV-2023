@@ -91,10 +91,10 @@ validation_dataloader = DataLoader(validation_dataset, batch_size=batch_size, sh
 
 # Initialize the custom model
 num_class = 7
-epochs = 50
+epochs = 100
 lr = 1e-4
 checkpoint = True
-checkpoint_name = 'P3_A_vggfcn32_model_epoch_19.pth'
+checkpoint_name = 'P3_A_vggfcn32_model_epoch_49.pth'
 checkpoint_path = os.path.join('./model_checkpoint', checkpoint_name)
 
 # Define a custom model
@@ -200,7 +200,9 @@ if checkpoint is True:
     epoch = checkpoint_info['epoch'] + 1
     model.load_state_dict(checkpoint_info['model_state_dict'])
     optimizer.load_state_dict(checkpoint_info['optimizer_state_dict'])
-    
+    #epoch = 50
+del checkpoint_info
+
 # Training loop 
 while epoch < epochs:
     model.train()  # Set the model to training mode
