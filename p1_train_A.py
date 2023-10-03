@@ -9,9 +9,9 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from torchvision import models
-import torchsummary 
-from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
+#import torchsummary 
+#from sklearn.decomposition import PCA
+#from sklearn.manifold import TSNE
 
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -78,6 +78,8 @@ figure_folder = './hw1_fig/'
 train_transform = transforms.Compose([
     transforms.Resize((224, 224)),  # Resize images
     transforms.ToTensor(),           # Convert images to Tensors
+    transforms.RandomResizedCrop((224, 224), scale=(0.6, 1)),
+    transforms.RandomHorizontalFlip(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406],  # Normalize
                          std=[0.229, 0.224, 0.225])
 ])
@@ -100,7 +102,7 @@ validation_dataloader = DataLoader(validation_dataset, batch_size=batch_size, sh
 
 # Initialize the custom classifier
 num_class = 50 
-epochs = 50
+epochs = 100
 lr = 1e-4
 
 '''
@@ -271,9 +273,11 @@ for epoch in range(epochs):
     if val_accuracy > best_val_accuracy:
         best_val_accuracy = val_accuracy
         # Save the trained model with the best validation accuracy
-        torch.save(classifier.state_dict(), f'P1_A_best_resnet_model_epoch_{epoch}.pth')
+        checkpoint_path = os.path.join('./model_checkpoint', f'P1_A_best_resnet_model_epoch_{epoch}.pth')
+        torch.save(classifier.state_dict(), checkpoint_path)
     if (epoch+1)%10 == 0:
-        torch.save(classifier.state_dict(), f'P1_A_resnet_model_epoch_{epoch}.pth')
+        checkpoint_path = os.path.join('./model_checkpoint', f'P1_A_resnet_model_epoch_{epoch}.pth')
+        torch.save(classifier.state_dict(), checkpoint_path)
         
     ''' This part moves to p1_visualize_and_accuracy.py to avoid cuda error
     # Perform PCA & TSNE visualization
@@ -358,7 +362,7 @@ plt.xlabel('Epoch')
 plt.ylabel('Accuracy (%)')
 plt.legend()
 plt.grid(True)
-plot_filename = os.path.join(figure_folder, 'p1_A_accuracy_curves.png')
+plot_filename = os.path.join(figure_folder, 'p1_A_accuracy_curves_final.png')
 plt.savefig(plot_filename)
 
 # Plot and save the training and validation loss curves
@@ -370,5 +374,5 @@ plt.xlabel('Epoch')
 plt.ylabel('Loss')
 plt.legend()
 plt.grid(True)
-plot_filename = os.path.join(figure_folder, 'p1_A_loss_curves.png')
+plot_filename = os.path.join(figure_folder, 'p1_A_loss_curves_final.png')
 plt.savefig(plot_filename)

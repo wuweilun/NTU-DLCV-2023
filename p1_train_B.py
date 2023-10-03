@@ -9,10 +9,10 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from torchvision import models
-import torchsummary 
+#import torchsummary 
 import torchvision
-from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
+#from sklearn.decomposition import PCA
+#from sklearn.manifold import TSNE
 
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -123,7 +123,7 @@ class CustomEfficientNetV2Classifier(nn.Module):
 
 
 classifier = CustomEfficientNetV2Classifier(num_class).to(device)
-torchsummary.summary(classifier, input_size=(3, 224, 224))
+#torchsummary.summary(classifier, input_size=(3, 224, 224))
 
 # Define loss function and optimizer
 criterion = nn.CrossEntropyLoss()
@@ -193,9 +193,11 @@ for epoch in range(epochs):
     if val_accuracy > best_val_accuracy:
         best_val_accuracy = val_accuracy
         # Save the trained model with the best validation accuracy
-        torch.save(classifier.state_dict(), f'P1_B_best_efficientnetv2_model_epoch_{epoch}.pth')
+        checkpoint_path = os.path.join('./model_checkpoint', f'P1_B_best_efficientnetv2_model_epoch_{epoch}.pth')
+        torch.save(classifier.state_dict(), checkpoint_path)
     if (epoch+1)%10 == 0:
-        torch.save(classifier.state_dict(), f'P1_B_efficientnetv2_model_epoch_{epoch}.pth')
+        checkpoint_path = os.path.join('./model_checkpoint', f'P1_B_efficientnetv2_model_epoch_{epoch}.pth')
+        torch.save(classifier.state_dict(), checkpoint_path)
 
 print(f"Best Validation Accuracy: {best_val_accuracy}")
 
@@ -208,7 +210,7 @@ plt.xlabel('Epoch')
 plt.ylabel('Accuracy (%)')
 plt.legend()
 plt.grid(True)
-plot_filename = os.path.join(figure_folder, 'p1_B_accuracy_curves.png')
+plot_filename = os.path.join(figure_folder, 'p1_B_accuracy_curves_final.png')
 plt.savefig(plot_filename)
 
 # Plot and save the training and validation loss curves
@@ -220,5 +222,5 @@ plt.xlabel('Epoch')
 plt.ylabel('Loss')
 plt.legend()
 plt.grid(True)
-plot_filename = os.path.join(figure_folder, 'p1_B_loss_curves.png')
+plot_filename = os.path.join(figure_folder, 'p1_B_loss_curves_final.png')
 plt.savefig(plot_filename)

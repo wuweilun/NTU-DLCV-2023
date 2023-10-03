@@ -11,7 +11,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from torchvision import models
-import torchsummary 
+#import torchsummary 
 from torch.optim import lr_scheduler
 from torch.optim.lr_scheduler import CosineAnnealingLR, LambdaLR
 
