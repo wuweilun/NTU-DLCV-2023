@@ -9,7 +9,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from torchvision import models
-import torchsummary
+#import torchsummary
 
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -134,18 +134,21 @@ class VGG_FCN32(nn.Module):
         x = self.upsample32(x)
         return x
 model_checkpint_folder = './'
+checkpoint_name = 'P3_B_best_deeplabv3_resnet50_model_epoch_86.pth'
+#checkpoint_name = 'P3_B_deeplabv3_resnet50_model_epoch_9.pth'
+checkpoint_path = os.path.join(model_checkpint_folder, checkpoint_name)
 
-# Create an instance of the FCN32s model
-model = VGG_FCN32(num_class).to(device)
-model.load_state_dict(torch.load(os.path.join(model_checkpint_folder,'P3_A_best_vggfcn32_model_epoch_22.pth')))
-
+# Create an instance of the deeplabv3_resnet50 model
+model = models.segmentation.deeplabv3_resnet50(num_classes = num_class, weight='DEFAULT').to(device)
+checkpoint_info = torch.load(checkpoint_path)['model_state_dict']
+model.load_state_dict(checkpoint_info)
 model.eval()  # Set the model to evaluation mode
 
 predictions = []
 with torch.no_grad():
     for images, filenames in validation_dataloader:
         images = images.to(device)
-        outputs = model(images)
+        outputs = model(images)['out']
 
         _, predicted = outputs.max(1)
         #print(predicted)
@@ -163,7 +166,7 @@ color = {
 
 for filename, pred in predictions:
     #print(filename.shape)
-    print(pred.shape)
+    #print(pred.shape)
     #print(filename)
     pred_image = np.zeros((512, 512, 3), dtype=np.uint8)
     pred_image[np.where(pred == 0)] = color[0]
@@ -176,7 +179,7 @@ for filename, pred in predictions:
     #print(pred_image)
     #print(pred_image.shape)
     filename = filename.replace('.jpg', '.png')
-    print(filename)
+    #print(filename)
     img = Image.fromarray(np.uint8(pred_image))
     #imageio.imwrite(os.path.join(output_path, filename), pred_image)
     img.save(os.path.join(output_path, filename))
