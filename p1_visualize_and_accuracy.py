@@ -186,9 +186,25 @@ def get_activation(activation):
     return hook
 
 classifier = CustomResNetClassifier(BasicBlock, [2, 2, 2, 2],num_classes=num_class).to(device)
-model_checkpoint_list = [f'P1_A_custom_resnet_model_epoch{epoch}' for epoch in [1, 11, 21, 31, 41]]
+model_checkpoint_list = [f'P1_A_resnet_model_epoch_{epoch}' for epoch in [0,9,19,29,39,49,59,69,79,89,99]]
+# class CustomEfficientNetV2Classifier(nn.Module):
+#     def __init__(self, num_classes):
+#         super(CustomEfficientNetV2Classifier, self).__init__()
+#         # Load the EfficientNetV2-S model
+#         self.effnet_v2_s = models.efficientnet_v2_s(weights=models.EfficientNet_V2_S_Weights.DEFAULT)
+#         self.effnet_v2_s.classifier = nn.Linear(1280, num_classes)
+
+#     def forward(self, x):
+#         x = self.effnet_v2_s(x)
+#         return x
+
+#classifier = CustomEfficientNetV2Classifier(num_class).to(device)
+#classifier.load_state_dict(torch.load('P1_B_best_custom_efficientnetv2_model_best.pth'))
+#torchsummary.summary(classifier, input_size=(3, 224, 224))
+#model_checkpoint_list = 'P1_B_best_custom_efficientnetv2_model_best.pth'
+
 for model_name in model_checkpoint_list:
-    classifier.load_state_dict(torch.load(f'{model_name}.pth'))  
+    #classifier.load_state_dict(torch.load(f'./model_checkpoint/{model_name}.pth'))  
     classifier.eval()  # Set the model to evaluation mode for PCA
 
     # Perform PCA & TSNE visualization
@@ -196,7 +212,8 @@ for model_name in model_checkpoint_list:
     tsne_labels = []    # Initialize list to store t-SNE labels
     features = []
     classifier.layer4.register_forward_hook(get_activation(features))
-
+    #classifier.effnet_v2_s.register_forward_hook(get_activation(features))
+    
     with torch.no_grad():
         for images, labels in validation_dataloader:
             images, labels = images.to(device), labels.to(device)
