@@ -1,4 +1,3 @@
-import argparse
 import os
 
 import numpy as np
@@ -9,13 +8,10 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from torchvision import models
-#import torchsummary
 
 from PIL import Image
-import matplotlib.pyplot as plt
-from tqdm import tqdm
 import imageio
-#import mean_iou_evaluate
+
 import glob
 import sys
 

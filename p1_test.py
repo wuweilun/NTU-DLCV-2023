@@ -1,4 +1,3 @@
-import argparse
 import os
 import sys
 
@@ -10,14 +9,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from torchvision import models
-import torchsummary 
-import torchvision
-from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
 
 from PIL import Image
-import matplotlib.pyplot as plt
-from tqdm import tqdm
 import pandas as pd
 
 class CustomDataset(Dataset):
