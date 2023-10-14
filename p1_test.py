@@ -80,7 +80,7 @@ class CustomEfficientNetV2Classifier(nn.Module):
     def __init__(self, num_classes):
         super(CustomEfficientNetV2Classifier, self).__init__()
         # Load the EfficientNetV2-S model
-        self.effnet_v2_s = models.efficientnet_v2_s(weights=models.EfficientNet_V2_S_Weights.DEFAULT)
+        self.effnet_v2_s = models.efficientnet_v2_s(weights=None)
         self.effnet_v2_s.classifier = nn.Linear(1280, num_classes)
 
     def forward(self, x):

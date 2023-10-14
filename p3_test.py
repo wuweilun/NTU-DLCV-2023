@@ -135,7 +135,7 @@ checkpoint_name = 'P3_B_best_deeplabv3_resnet50_model_epoch_86.pth'
 checkpoint_path = os.path.join(model_checkpint_folder, checkpoint_name)
 
 # Create an instance of the deeplabv3_resnet50 model
-model = models.segmentation.deeplabv3_resnet50(num_classes = num_class, weight='DEFAULT').to(device)
+model = models.segmentation.deeplabv3_resnet50(num_classes = num_class, weight=None).to(device)
 checkpoint_info = torch.load(checkpoint_path)['model_state_dict']
 model.load_state_dict(checkpoint_info)
 model.eval()  # Set the model to evaluation mode
@@ -174,7 +174,7 @@ for filename, pred in predictions:
     pred_image[np.where(pred == 6)] = color[6]
     #print(pred_image)
     #print(pred_image.shape)
-    filename = filename.replace('.jpg', '.png')
+    filename = filename.replace('sat.jpg', 'mask.png')
     #print(filename)
     img = Image.fromarray(np.uint8(pred_image))
     #imageio.imwrite(os.path.join(output_path, filename), pred_image)
