@@ -116,8 +116,8 @@ if __name__ == '__main__':
     cmap = cls_color
     args = arg_parse()
 
-    img_path = args.img_path
-    seg_path = args.seg_path
+    img_path = args.sat_path
+    seg_path = args.mask_path
 
     img = imageio.imread(img_path)
     seg = imageio.imread(seg_path)
@@ -125,10 +125,13 @@ if __name__ == '__main__':
     masks = read_masks(seg)
     
     cs = np.unique(masks)
-
+    filename = os.path.basename(seg_path).split('/')[-1]
+    filename = filename.replace('.png', '_viz.png')
+    output_path = os.path.join('./hw1_fig', filename)
     for c in cs:
         mask = np.zeros((img.shape[0], img.shape[1]))
         ind = np.where(masks == c)
         mask[ind[0], ind[1]] = 1
         img = viz_data(img, mask, color=cmap[c])
-        imageio.imsave('./exp.png', np.uint8(img))
+        
+        imageio.imsave(output_path, np.uint8(img))
