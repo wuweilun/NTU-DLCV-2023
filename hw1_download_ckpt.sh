@@ -1,0 +1,3 @@
+gdown 1pCGG8Vxksj8028Nm-1sAkVx0ip0Q8S_N -O P1_B_best_custom_efficientnetv2_model_best.pth
+gdown 10XdNtSPL-3WLPbxyyqVvqL912sVFnNiG -O P2_setting_C_epoch_86.pth
+gdown 10Goj3d4JWmALx08WgJyoO4Hn7tLsf9YG -O P3_B_best_deeplabv3_resnet50_model_epoch_86.pth
