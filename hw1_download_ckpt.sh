@@ -1,3 +1,5 @@
-gdown 1RI-K2l_QJpb8ppuPEG3NEb9KNVbegvwq -O P1_B_best_custom_efficientnetv2_model_best.pth
-gdown 1FbOg1ltCsxAFV3duKgtPjIU58pulOgw4 -O P2_setting_C_epoch_86.pth
-gdown 10Goj3d4JWmALx08WgJyoO4Hn7tLsf9YG -O P3_B_best_deeplabv3_resnet50_model_epoch_86.pth
+# Download model checkpoint
+gdown 1vfWSNRsw3mRWitbWDmAolhO_KFDRAwED -O hw1_model_checkpoint.zip
+
+# Unzip the downloaded zip file
+unzip ./hw1_model_checkpoint.zip
