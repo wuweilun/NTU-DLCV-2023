@@ -129,7 +129,7 @@ class VGG_FCN32(nn.Module):
         # upsample to get segmentation prediction
         x = self.upsample32(x)
         return x
-model_checkpint_folder = './'
+model_checkpint_folder = './hw1_model_checkpoint'
 checkpoint_name = 'P3_B_best_deeplabv3_resnet50_model_epoch_86.pth'
 #checkpoint_name = 'P3_B_deeplabv3_resnet50_model_epoch_9.pth'
 checkpoint_path = os.path.join(model_checkpint_folder, checkpoint_name)

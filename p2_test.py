@@ -76,7 +76,7 @@ validation_dataloader = DataLoader(validation_dataset, batch_size=batch_size, sh
 # Initialize the custom model
 num_class = 65
 
-model_checkpint_folder = './'
+model_checkpint_folder = './hw1_model_checkpoint'
 checkpoint_name = 'P2_setting_C_epoch_86.pth'
 checkpoint_path = os.path.join(model_checkpint_folder, checkpoint_name)
 #backbone_name = 'P2_best_byol_model_epoch_38.pth'

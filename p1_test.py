@@ -87,9 +87,11 @@ class CustomEfficientNetV2Classifier(nn.Module):
         x = self.effnet_v2_s(x)
         return x
 
-
+model_checkpint_folder = './hw1_model_checkpoint'
+checkpoint_name = 'P1_B_best_custom_efficientnetv2_model_best.pth'
+checkpoint_path = os.path.join(model_checkpint_folder, checkpoint_name)
 classifier = CustomEfficientNetV2Classifier(num_class).to(device)
-classifier.load_state_dict(torch.load('P1_B_best_custom_efficientnetv2_model_best.pth'))  
+classifier.load_state_dict(torch.load(checkpoint_path))  
 classifier.eval()  
 
 # Use classifier to predict class
