@@ -6,3 +6,4 @@ hw2_data/*
 *jpg
 hw2_fig/*
 model_checkpoint/*
+__pycache__/*
