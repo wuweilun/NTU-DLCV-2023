@@ -99,7 +99,7 @@ label_loss = nn.CrossEntropyLoss()
 epoch = 0
 epochs = 100
 num_class = 10
-best_val_accuracy = 0.1
+best_val_accuracy = 0.8
 
 checkpoint = False
 checkpoint_name = ''
@@ -146,7 +146,8 @@ while epoch < epochs:
         
     # Calculate average training loss
     avg_train_loss = train_loss / len(train_dataloader)
-    print(f"[Train Loss] Total: {avg_train_loss:.4f}")
+    label_train_accuracy = 100 * source_label_correct / source_label_total
+    print(f"[Train] Target Label Loss: {avg_train_loss:.4f}, Target Label Accuracy: {label_train_accuracy:.2f}%")
     
     # Validation loop to evaluate the model on the validation set
     model.eval()  # Set the model to evaluation mode
@@ -183,4 +184,4 @@ while epoch < epochs:
         torch.save(checkpoint, checkpoint_path)
     epoch+=1
     
-print(f"Best Validation Accuracy: {best_val_accuracy}")
+print(f"Best Validation Accuracy: {best_val_accuracy}%")
