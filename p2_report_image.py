@@ -16,9 +16,13 @@ import random
 import glob 
 from PIL import Image
 
-random.seed(0)
-np.random.seed(0)
-torch.manual_seed(0)
+seed = 54
+random.seed(seed)
+np.random.seed(seed)
+torch.manual_seed(seed)
+torch.cuda.manual_seed(seed)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 # Path to the predefined noises, figure folders, model weight
 noises_folder = sys.argv[1]
@@ -42,6 +46,7 @@ class Diffusion:
         self.device = device
         self.c_in = c_in
         self.image_path = []
+        self.interpolation_noise = None
         
     def sample_timesteps(self, n):
         return torch.randint(low=1, high=self.noise_steps, size=(n,))
@@ -58,10 +63,13 @@ class Diffusion:
         a = (1 - beta).cumprod(dim=0).index_select(0, t + 1).view(-1, 1, 1, 1)
         return a
     
-    def sample(self, time_steps=50, eta=0, stop_idx=4):
+    def sample(self, time_steps=50, eta=0, stop_idx=4, interpolation=False):
         model = self.model
         model.eval()
-        noises = sorted(glob.glob(os.path.join(noises_folder, "*.pt")))
+        if interpolation:
+            noises = [self.interpolation_noise]
+        else:
+            noises = sorted(glob.glob(os.path.join(noises_folder, "*.pt")))
         noise_idx = 0
         interval = self.noise_steps // time_steps
         seq = range(0, self.noise_steps, interval)
@@ -69,7 +77,10 @@ class Diffusion:
         
         with torch.no_grad():
             for noise in noises:
-                x = torch.load(noise).to(self.device)
+                if interpolation:
+                    x = noise
+                else:
+                    x = torch.load(noise).to(self.device)
                 n = x.size(0)
                 seq_next = [-1] + list(seq[:-1])
                 x0_preds = []
@@ -93,67 +104,57 @@ class Diffusion:
                     
                 x = xs[-1]
                 image = x[0]
-                min_value = torch.min(image)
-                max_value = torch.max(image)
+                # min_value = torch.min(image)
+                # max_value = torch.max(image)
 
-                # Perform min-max normalization
-                image_normalized = (image - min_value) / (max_value - min_value)
-                image = (image_normalized * 255).type(torch.uint8).permute(1, 2, 0).detach().cpu().numpy()
-                #print(image.shape)
-                filename = f"{noise_idx:02d}_{eta}.png"
-                image_path = os.path.join(figure_folder, filename)
-                self.image_path.append(image_path)
+                # # Perform min-max normalization
+                # image_normalized = (image - min_value) / (max_value - min_value)
+                # image = (image_normalized * 255).type(torch.uint8).permute(1, 2, 0).detach().cpu().numpy()
+                # #print(image.shape)
+                # filename = f"{noise_idx:02d}_{eta}.png"
+                # image_path = os.path.join(figure_folder, filename)
+                # self.image_path.append(image_path)
                 
-                # Convert the NumPy array to a PIL image
-                image = Image.fromarray(np.uint8(image))
-                image.save(image_path)
-                noise_idx+=1
+                # # Convert the NumPy array to a PIL image
+                # image = Image.fromarray(np.uint8(image))
+                # image.save(image_path)
+                # noise_idx+=1
+                if interpolation:
+                    return image
+                else:
+                    image = image.clamp(-1, 1)
+                    filename = f"{noise_idx:02d}_eta_{eta}.png"
+                    image_path = os.path.join(figure_folder, filename)
+                    self.image_path.append(image_path)
+                    save_image(image, image_path, normalize=True)
+                    noise_idx+=1
+                
                 if stop_idx == noise_idx:
                     break
                 
-    def interpolation(self, method=None, image_folder=None, image1_name=None, image2_name=None, alpha=None):
-        image1_path = os.path.join(image_folder, image1_name)
-        image2_path = os.path.join(image_folder, image2_name)
-        image1 = Image.open(image1_path)
-        image2 = Image.open(image2_path)
+    def interpolation(self, method=None, noise0_name="00.pt", noise1_name="01.pt", alpha=None):
+        noise1_path = os.path.join(noises_folder, noise0_name)
+        noise2_path = os.path.join(noises_folder, noise1_name)
+        x0 = torch.load(noise1_path)
+        x1 = torch.load(noise2_path)
         
         if method=='spherical':
-            # transform = transforms.ToTensor()
-            # x0 = (transform(image1)* 255)
-            # x1 = (transform(image2)* 255)
-            # theta = torch.acos(torch.sum(x0 * x1)/(torch.norm(x0) * torch.norm(x1)))
-            # image = torch.sin((1 - alpha) * theta) / torch.sin(theta) * x0 + torch.sin(alpha * theta) / torch.sin(theta) * x1
-            # image = image.type(torch.uint8).permute(1, 2, 0).detach().cpu().numpy()
+            theta = torch.acos(torch.sum(x0 * x1)/(torch.norm(x0) * torch.norm(x1)))
+            interpolated_noise = torch.sin((1 - alpha) * theta) / torch.sin(theta) * x0 + torch.sin(alpha * theta) / torch.sin(theta) * x1
+            self.interpolation_noise = interpolated_noise
             
-            v0 = image1
-            v1 = image2
-            # Copy the vectors to reuse them later
-            v0_copy = np.copy(v0)
-            v1_copy = np.copy(v1)
-            # Normalize the vectors to get the directions and angles
-            v0 = v0 / np.linalg.norm(v0)
-            v1 = v1 / np.linalg.norm(v1)
-            # Dot product with the normalized vectors (can't use np.dot in W)
-            dot = np.sum(v0 * v1)
-            theta = np.arccos(dot)
-
-            # Finish the slerp algorithm
-            s0 = np.sin((1-alpha) * theta) / np.sin(theta)
-            s1 = np.sin(alpha * theta) / np.sin(theta)
-            image = s0 * v0_copy + s1 * v1_copy    
-            filename = f"spherical_linear_interpolation_{image1_name.replace('.png', '')}_{image2_name.replace('.png', '')}_{alpha}.png"
+            filename = f"spherical_linear_interpolation_{noise0_name.replace('.pt', '')}_{noise1_name.replace('.pt', '')}_{alpha}.png"
         else:
-            array1 = np.array(image1)
-            array2 = np.array(image2)
-            image = (1 - alpha) * array1 + alpha * array2
-            filename = f"linear_interpolation_{image1_name.replace('.png', '')}_{image2_name.replace('.png', '')}_{alpha}.png"
+            interpolated_noise = (1 - alpha) * x0 + alpha * x1
+            self.interpolation_noise = interpolated_noise
             
+            filename = f"linear_interpolation_{noise0_name.replace('.pt', '')}_{noise1_name.replace('.pt', '')}_{alpha}.png"
+        
+        image = self.sample(time_steps=50, eta=0, interpolation=True)
+        image = image.clamp(-1, 1)
         image_path = os.path.join(figure_folder, filename)
         self.image_path.append(image_path)
-        
-        # Convert the NumPy array to a PIL image
-        image = Image.fromarray(np.uint8(image))
-        image.save(image_path)
+        save_image(image, image_path, normalize=True)
 
     def concat_images(self, result_filename=None, row=None, col=None):
         images = [Image.open(filename) for filename in self.image_path]
@@ -189,13 +190,13 @@ with torch.no_grad():
     ddpm.image_path = []
     
     for alpha in alpha_list:
-        ddpm.interpolation(method='spherical', image_folder=figure_folder, image1_name="00.png", image2_name="01.png", alpha=alpha)
-    ddpm.concat_images(result_filename='slerp.png', row=1, col=10)  
+        ddpm.interpolation(method='spherical', noise0_name="00.pt", noise1_name="01.pt", alpha=alpha)
+    ddpm.concat_images(result_filename='slerp.png', row=1, col=11)  
     ddpm.image_path = [] 
     
     for alpha in alpha_list:
-        ddpm.interpolation(method='linear', image_folder=figure_folder, image1_name="00.png", image2_name="01.png", alpha=alpha)
-    ddpm.concat_images(result_filename='linear_interpolation.png', row=1, col=10)
+        ddpm.interpolation(method='linear', noise0_name="00.pt", noise1_name="01.pt", alpha=alpha)
+    ddpm.concat_images(result_filename='linear_interpolation.png', row=1, col=11)
     ddpm.image_path = []   
     
 
