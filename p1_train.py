@@ -49,8 +49,9 @@ class CustomDataset(Dataset):
 # Define data preprocessing transformations
 train_transform = transforms.Compose([
     transforms.Resize(32),
-    #transforms.RandomResizedCrop(32, scale=(0.8, 1.0)),
     transforms.ToTensor(),     
+    #transforms.RandomResizedCrop(32, scale=(0.8, 1.0)),
+    #transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
 ])
 
 # Path to the data folders and figure folders
@@ -123,14 +124,14 @@ class Diffusion:
         return x
 
 ddpm = Diffusion(img_size=32)
-optimizer = optim.AdamW(ddpm.model.parameters(), lr=1e-4)
+optimizer = optim.AdamW(ddpm.model.parameters(), lr=5e-5) # lr=1e-4
 mse = nn.MSELoss()
 scaler = torch.cuda.amp.GradScaler()
 
 epoch = 0
-epochs = 100
-checkpoint = False
-checkpoint_name = ''
+epochs = 1000
+checkpoint = True
+checkpoint_name = 'ddpm_879.pth'
 checkpoint_path = os.path.join('./model_checkpoint', checkpoint_name)
 
 if checkpoint is True:
