@@ -12,9 +12,17 @@ import sys
 from unet_conditional import UNet_conditional
 import random
 
-random.seed(0)
-np.random.seed(0)
-torch.manual_seed(0)
+# random.seed(0)
+# np.random.seed(0)
+# torch.manual_seed(0)
+
+seed = 54
+random.seed(seed)
+np.random.seed(seed)
+torch.manual_seed(seed)
+torch.cuda.manual_seed(seed)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 # Path to the figure folders
 figure_folder = sys.argv[1]
@@ -52,7 +60,7 @@ class Diffusion:
         Ɛ = torch.randn_like(x)
         return sqrt_alpha_hat * x + sqrt_one_minus_alpha_hat * Ɛ, Ɛ
     
-    def sample(self, labels, cfg_scale=3):
+    def sample(self, labels, cfg_scale=0):
         model = self.model
         n = len(labels)
         model.eval()
@@ -95,7 +103,7 @@ class Diffusion:
 ddpm = Diffusion(img_size=32)
 scaler = torch.cuda.amp.GradScaler()
 
-checkpoint_name = 'ddpm_499.pth'
+checkpoint_name = 'ddpm_999.pth' #499
 checkpoint_path = os.path.join('./model_checkpoint/', checkpoint_name)
 checkpoint_info = torch.load(checkpoint_path)['model_state_dict']
 
