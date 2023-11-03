@@ -7,7 +7,7 @@ import numpy as np
 import os
 
 gt_data_folder = './hw2_data/face/GT/'
-generated_data_folder = './hw2_fig/p2_mse/'
+generated_data_folder = './bash_output/p2_output_images'
 gt_filenames = sorted(glob.glob(os.path.join(gt_data_folder, "*.png")))
 generated_filenames = sorted(glob.glob(os.path.join(generated_data_folder, "*.png")))
 
