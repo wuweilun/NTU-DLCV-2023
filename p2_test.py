@@ -97,7 +97,8 @@ class Diffusion:
                 x = xs[-1]
                 image = x[0]
                 image = image.clamp(-1, 1)
-                filename = f"{noise_idx:02d}.png"
+                filename = os.path.basename(noise).split('/')[-1]
+                filename = filename.replace('.pt', '.png')
                 image_path = os.path.join(figure_folder, filename)
                 save_image(image, image_path, normalize=True)
                 noise_idx+=1
