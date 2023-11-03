@@ -7,3 +7,4 @@ hw2_data/*
 hw2_fig/*
 model_checkpoint/*
 __pycache__/*
+bash_output/*
