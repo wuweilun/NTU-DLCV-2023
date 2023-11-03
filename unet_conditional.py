@@ -1,5 +1,7 @@
-# Unet architecture with label and pos encoding: https://github.com/tcapelle/Diffusion-Models-pytorch/blob/main/modules.py
-# blog: https://wandb.ai/capecape/train_sd/reports/How-To-Train-a-Conditional-Diffusion-Model-From-Scratch--VmlldzoyNzIzNTQ1
+# Unet architecture with label and pos encoding: 
+# https://github.com/tcapelle/Diffusion-Models-pytorch/blob/main/modules.py
+# blog: 
+# https://wandb.ai/capecape/train_sd/reports/How-To-Train-a-Conditional-Diffusion-Model-From-Scratch--VmlldzoyNzIzNTQ1
 
 import torch
 import torch.nn as nn
