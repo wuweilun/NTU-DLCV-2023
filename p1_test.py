@@ -12,9 +12,13 @@ import sys
 from unet_conditional import UNet_conditional
 import random
 
-random.seed(0)
-np.random.seed(0)
-torch.manual_seed(0)
+seed = 54
+random.seed(seed)
+np.random.seed(seed)
+torch.manual_seed(seed)
+torch.cuda.manual_seed(seed)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 # Path to the figure folders
 figure_folder = sys.argv[1]
@@ -52,11 +56,11 @@ class Diffusion:
         Ɛ = torch.randn_like(x)
         return sqrt_alpha_hat * x + sqrt_one_minus_alpha_hat * Ɛ, Ɛ
     
-    def sample(self, labels, cfg_scale=0):
+    def sample(self, labels, cfg_scale=3):
         model = self.model
         n = len(labels)
         model.eval()
-        with torch.no_grad():
+        with torch.cuda.amp.autocast():
             x = torch.randn((n, self.c_in, self.img_size, self.img_size)).to(self.device)
             for i in tqdm(reversed(range(1, self.noise_steps))):
                 t = (torch.ones(n) * i).long().to(self.device)
@@ -72,14 +76,14 @@ class Diffusion:
                 else:
                     noise = torch.zeros_like(x)
                 x = 1 / torch.sqrt(alpha) * (x - ((1 - alpha) / (torch.sqrt(1 - alpha_hat))) * predicted_noise) + torch.sqrt(beta) * noise
-        
+            
         return x
 
 ddpm = Diffusion(img_size=32)
 scaler = torch.cuda.amp.GradScaler()
 
-checkpoint_name = 'ddpm_99.pth'
-checkpoint_path = os.path.join('./model_checkpoint', checkpoint_name)
+checkpoint_name = 'ddpm_999.pth'
+checkpoint_path = os.path.join('./', checkpoint_name)
 checkpoint_info = torch.load(checkpoint_path)['model_state_dict']
 
 ddpm.model.load_state_dict(checkpoint_info)
@@ -87,12 +91,17 @@ ddpm.model.load_state_dict(checkpoint_info)
 ddpm.model.eval()  # Set the model to evaluation mode
 
 class_pairs = [(0, 1), (2, 3), (4, 5), (6, 7), (8, 9)]
-# class_pairs = [(0, 1, 2, 3, 4), (5, 6, 7, 8, 9)]
+
+class_pairs = [(0, 1, False), (2, 3, False), (6, 5, False),
+                (4, 7, False), (8, 9, False)]
+
 with torch.no_grad():
-    for class1, class2 in class_pairs:
-        #labels = (torch.ones(100) * class_label).long().to(device)
+    for class1, class2, difficult in class_pairs:
         labels = torch.cat([torch.tensor([class1, class2]).long()] * 100, dim=0).to(device)
-        sampled_images = ddpm.sample(labels=labels)
+        if difficult == True:
+            sampled_images = ddpm.sample(labels=labels, cfg_scale=3)
+        else:
+            sampled_images = ddpm.sample(labels=labels, cfg_scale=0)
         for class_label in (class1, class2):
             for image_number in range(100):  
                 image = sampled_images[image_number*2+class_label%2]
@@ -101,23 +110,3 @@ with torch.no_grad():
                 filename = f"{class_label}_{image_number+1:03d}.png"
                 image_path = os.path.join(figure_folder, filename)
                 save_image(grid, image_path)
-
-# with torch.no_grad():
-#     for class_label in range(10):
-#         labels = (torch.ones(50) * class_label).long().to(device)
-#         sampled_images = ddpm.sample(labels=labels)
-#         for image_number in range(50):  
-#             image = sampled_images[image_number]
-#             image = transforms.Resize((28, 28), antialias=True)(image)
-#             grid = make_grid(image, nrow=1)
-#             filename = f"{class_label}_{image_number+1:03d}.png"
-#             image_path = os.path.join(figure_folder, filename)
-#             save_image(grid, image_path)
-#         sampled_images = ddpm.sample(labels=labels)
-#         for image_number in range(50):  
-#             image = sampled_images[image_number]
-#             image = transforms.Resize((28, 28), antialias=True)(image)
-#             grid = make_grid(image, nrow=1)
-#             filename = f"{class_label}_{image_number+51:03d}.png"
-#             image_path = os.path.join(figure_folder, filename)
-#             save_image(grid, image_path)

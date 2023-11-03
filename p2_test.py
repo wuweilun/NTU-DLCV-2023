@@ -16,9 +16,13 @@ import random
 import glob 
 from PIL import Image
 
-random.seed(0)
-np.random.seed(0)
-torch.manual_seed(0)
+seed = 54
+random.seed(seed)
+np.random.seed(seed)
+torch.manual_seed(seed)
+torch.cuda.manual_seed(seed)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 # Path to the predefined noises, figure folders, model weight
 noises_folder = sys.argv[1]
@@ -92,36 +96,11 @@ class Diffusion:
                     
                 x = xs[-1]
                 image = x[0]
-                min_value = torch.min(image)
-                max_value = torch.max(image)
-
-                # Perform min-max normalization
-                image_normalized = (image - min_value) / (max_value - min_value)
-                image = (image_normalized * 255).type(torch.uint8).permute(1, 2, 0).detach().cpu().numpy()
-                #print(image.shape)
+                image = image.clamp(-1, 1)
                 filename = f"{noise_idx:02d}.png"
                 image_path = os.path.join(figure_folder, filename)
-                
-                # Convert the NumPy array to a PIL image
-                image = Image.fromarray(np.uint8(image))
-                image.save(image_path)
+                save_image(image, image_path, normalize=True)
                 noise_idx+=1
-                
-        #         for i in tqdm(reversed(range(1, self.noise_steps))):
-        #             t = (torch.ones(1) * i).long().to(self.device)
-        #             predicted_noise = model(x, t)
-        #             alpha = self.alpha[t][:, None, None, None]
-        #             one_step_t = (torch.ones(1) * (i-1)).long().to(self.device)
-        #             alpha_one_step = self.alpha[one_step_t][:, None, None, None]
-        #             dev = eta * torch.sqrt((1-alpha_one_step)/(1-alpha)) * torch.sqrt((1-alpha/alpha_one_step))
-        #             #alpha_hat = self.alpha_hat[t][:, None, None, None]
-        #             #beta = self.beta[t][:, None, None, None]
-        #             if i > 1:
-        #                 noise = torch.randn_like(x)
-        #             else:
-        #                 noise = torch.zeros_like(x)
-        #             x = (torch.sqrt(alpha_one_step) * (x-torch.sqrt(1-alpha)*predicted_noise) / torch.sqrt(alpha)) + (torch.sqrt(1-alpha_one_step-dev*dev) * predicted_noise) +  dev * noise
-        #             x = x.float()
 
 ddpm = Diffusion(img_size=32)
 #scaler = torch.cuda.amp.GradScaler()
