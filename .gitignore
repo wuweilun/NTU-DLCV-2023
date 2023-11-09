@@ -2,6 +2,8 @@
 #IMPORTANT: make sure that your dataset is stored in a folder with the same as the one specified below
 
 hw3_data/*
+hw3_data.zip
+__MACOSX
 *png
 *jpg
 hw3_fig/*
