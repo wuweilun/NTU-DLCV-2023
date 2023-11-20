@@ -7,16 +7,18 @@ import loralib as lora
 
 class Config:
 
-    def __init__(self, checkpoint=None, peft_type ="adapter"):
+    def __init__(self, checkpoint=None, peft_type ="adapter", atten_map_flag=False):
         self.n_layer = 12
         self.n_head = 12
         self.n_embd = 768
         self.vocab_size = 50257
         self.block_size = 1024
         self.checkpoint = checkpoint
-        self.adapter_size = int(self.n_embd * 0.1)
+        self.adapter_size = int(self.n_embd * 0.25)
         self.peft_type = peft_type
         self.dropout = 0.1
+        self.atten_map_flag = atten_map_flag
+        self.cross_n_embd = 384
 
 class Attention(nn.Module):
 
@@ -85,12 +87,12 @@ class CrossAttention(nn.Module):
 
     def __init__(self, cfg):
         super().__init__()
-        self.query = nn.Linear(cfg.n_embd, cfg.n_embd)
-        self.key = nn.Linear(cfg.n_embd, cfg.n_embd)
-        self.value = nn.Linear(cfg.n_embd, cfg.n_embd)
-        self.c_proj_cross = nn.Linear(cfg.n_embd, cfg.n_embd)
+        self.query = nn.Linear(cfg.n_embd, cfg.cross_n_embd) # how about 384, 192
+        self.key = nn.Linear(1024, cfg.cross_n_embd)
+        self.value = nn.Linear(1024, cfg.cross_n_embd)
+        self.c_proj_cross = nn.Linear(cfg.cross_n_embd, cfg.n_embd)
         self.n_head = cfg.n_head
-        self.n_embd = cfg.n_embd
+        self.n_embd = cfg.cross_n_embd
         size = cfg.block_size
         self.register_buffer('bias', torch.tril(torch.ones(size, size)).view(1, 1, size, size))
 
@@ -98,25 +100,27 @@ class CrossAttention(nn.Module):
         B, T_text, C_text = x_text.size()  # batch, context_text, embedding_text
         _, T_image, C_image = x_image.size()  # batch, context_image, embedding_image
         #print(B, T_text, T_image) #16 64 197
-        # print(B, C_text, C_image)
+        #print(B, C_text, C_image)
         
         q_text = self.query(x_text)
-        q_text = q_text.view(B, T_text, self.n_head, C_text // self.n_head).transpose(1, 2)
+        #print(q_text.shape)
+        q_text = q_text.view(B, T_text, self.n_head, self.n_embd // self.n_head).transpose(1, 2)
         #print(q_text.shape) # ([16, 12, 64, 64])
         
         # Maybe change C_text to C_images? 
         k_image = self.key(x_image)
+        #print(k_image.shape)
         v_image = self.value(x_image)
-        k_image = k_image.view(B, T_image, self.n_head, C_image // self.n_head).transpose(1, 2) 
-        v_image = v_image.view(B, T_image, self.n_head, C_image // self.n_head).transpose(1, 2)
+        k_image = k_image.view(B, T_image, self.n_head, self.n_embd // self.n_head).transpose(1, 2) 
+        v_image = v_image.view(B, T_image, self.n_head, self.n_embd // self.n_head).transpose(1, 2)
         #print(k_image.shape, v_image.shape) # [16, 12, 197, 64]) ([16, 12, 197, 64])
         #print(k_image.transpose(-2, -1).shape)
         att = (q_text @ k_image.transpose(-2, -1)) * (1.0 / math.sqrt(k_image.size(-1)))
-        # att = att.masked_fill(self.bias[:, :, :T_text, :T_texr] == 0, float('-inf'))
+        # att = att.masked_fill(self.bias[:, :, :T_text, :T_text] == 0, float('-inf'))
         att = F.softmax(att, dim=-1)
         #print(att.shape) # ([16, 12, 64, 197])
         #print((att @ v_image).transpose(1, 2).shape) #([16, 64, 12, 64])
-        return self.c_proj_cross((att @ v_image).transpose(1, 2).contiguous().view(B, T_text, C_text))
+        return self.c_proj_cross((att @ v_image).transpose(1, 2).contiguous().view(B, T_text, self.n_embd)), att
 
 class AdapterLayer(nn.Module):
     def __init__(self, input_size, output_size):
@@ -160,13 +164,20 @@ class Block(nn.Module):
         # x = x + self.mlp(self.ln_3(x))
         if self.cfg.peft_type == "adapter":
             x = x + self.adapter_layer_1(self.dropout_1(self.attn(self.ln_1(x))))
-            x = x + self.dropout_2(self.attn_cross(self.ln_2(x), x_image))
+            x_cross, atten_map = self.attn_cross(self.ln_2(x), x_image)
+            x = x + self.dropout_2(x_cross)
             x = x + self.adapter_layer_3(self.dropout_3(self.mlp(self.ln_3(x))))
         elif self.cfg.peft_type == "lora":
             x = x + self.dropout_1(self.attn(self.ln_1(x)))
-            x = x + self.dropout_2(self.attn_cross(self.ln_2(x), x_image))
+            x_cross, atten_map = self.attn_cross(self.ln_2(x), x_image)
+            x = x + self.dropout_2(x_cross)
             x = x + self.dropout_3(self.mlp(self.ln_3(x)))
-        return x
+        else:
+            x = x + self.dropout_1(self.attn(self.ln_1(x)))
+            x_cross, atten_map = self.attn_cross(self.ln_2(x), x_image)
+            x = x + self.dropout_2(x_cross)
+            x = x + self.dropout_3(self.mlp(self.ln_3(x)))
+        return x, atten_map
     
 class Decoder(nn.Module):
 
@@ -205,11 +216,18 @@ class Decoder(nn.Module):
         pos = torch.arange(x.size()[1], dtype=torch.long, device=x.device).unsqueeze(0)
         x = self.transformer.wte(x) + self.transformer.wpe(pos)
         # x = self.lm_head(self.transformer.ln_f(self.transformer.h(x, x_image)))
+        atten_map_all = []
         for block in self.transformer.h:
-            x = block(x, x_image)
+            x, atten_map = block(x, x_image)
+            atten_map_all.append(atten_map)
+        # [layer_num, batch_size, head_num, max_len, encode_size**2]
+        atten_map_all = torch.stack(atten_map_all)
         # x = self.transformer.h(x, x_image)
         x = self.lm_head(self.transformer.ln_f(x))
-        return x
+        if self.cfg.atten_map_flag:
+            return x, atten_map_all
+        else:
+            return x
     
 class PrefixEncoder(torch.nn.Module):
     def __init__(self, config):
