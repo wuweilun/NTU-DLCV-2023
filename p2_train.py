@@ -100,13 +100,14 @@ train_dataloader = DataLoader(train_dataset, batch_sampler=batch_sampler_train_d
 val_dataset = CustomDataset(annotations=val_data['annotations'], images=val_data['images'], image_folder= val_image_folder, tokenizer=tokenizer, transform=val_transform)
 val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False, num_workers=4)
 
+# tmp=0
 # for annotation in train_data['annotations']:
 #     caption = annotation.get('caption', '')
 #     caption_tokens = tokenizer.encode(caption, allowed_special=[''])
-#     print(len(caption_tokens))
-#     if tmp < len(caption_tokens):
-#         tmp = len(caption_tokens)
-        
+#     #print(len(caption_tokens))
+#     if  64 < len(caption_tokens):
+#         tmp+=1
+# print(tmp)   
 class EncoderDecoder(nn.Module):
     def __init__(self, decoder_checkpoint=None, peft_type="adapter"):
         super(EncoderDecoder, self).__init__()
@@ -124,7 +125,11 @@ class EncoderDecoder(nn.Module):
                 param.requires_grad = False
         
         self.peft_type = peft_type
-        self.decoder_cfg = Config(checkpoint=decoder_checkpoint, peft_type=peft_type)
+        if self.peft_type == "adapter":
+            cross_n_embd = 384
+        elif self.peft_type == "lora":
+            cross_n_embd = 768
+        self.decoder_cfg = Config(checkpoint=decoder_checkpoint, peft_type=peft_type, cross_n_embd=cross_n_embd)
         self.decoder = Decoder(cfg=self.decoder_cfg)
         for param in self.decoder.parameters():
             param.requires_grad = False
@@ -146,6 +151,13 @@ for block in model.decoder.transformer.h:
         #     param.requires_grad = True
         for param in block.adapter_layer_3.parameters():
             param.requires_grad = True
+        for param in block.ln_1.parameters():
+            param.requires_grad = True
+        for param in block.ln_2.parameters():
+            param.requires_grad = True
+        for param in block.ln_3.parameters():
+            param.requires_grad = True
+            
     for param in block.attn_cross.parameters():
         param.requires_grad = True
         
@@ -157,14 +169,14 @@ model.to(device)
 best_val_loss = 100.0
 
 epoch = 0
-epochs = 30
+epochs = 10
 checkpoint = False
 checkpoint_name = 'Adapter_best_9.pth'
 checkpoint_path = os.path.join('./model_checkpoint', checkpoint_name)
 scaler = GradScaler()
 
 # Define loss function and optimizer
-criterion = nn.CrossEntropyLoss(ignore_index=50256)
+criterion = nn.CrossEntropyLoss(ignore_index=-100)
 #optimizer = optim.AdamW(model.parameters(), lr=1e-4, weight_decay=1e-4) # lr=1e-4
 # optimizer = optim.AdamW(model.parameters(), lr=1e-4)
 #optimizer = optim.Adam(model.parameters(), lr=1e-4, betas=(0.9, 0.99), eps=1e-9)
@@ -226,6 +238,12 @@ while epoch < epochs:
             
             # Flatten caption_length and batch_size to get targets with shape [batch_size * caption_length]
             captions = captions[:,1:].contiguous()
+            for i in range(captions.size(0)):
+                end_token_indices = (captions[i] == 50256).nonzero()
+                if end_token_indices.numel() > 0:
+                    col = end_token_indices[0]
+                    if col < captions.size(1) - 1:
+                        captions[i, col + 1:] = -100
             targets_flat = captions.reshape(-1)
 
             loss = criterion(logits_flat, targets_flat)
@@ -234,7 +252,7 @@ while epoch < epochs:
             #print(loss)
         scaler.scale(loss).backward()
         #scaler.unscale_(optimizer)
-        #nn.utils.clip_grad_norm_(model.parameters(), max_norm=4.0)
+        nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         scaler.step(optimizer)
         scaler.update()
         scheduler.step()
@@ -259,6 +277,12 @@ while epoch < epochs:
                 
                 # Flatten caption_length and batch_size to get targets with shape [batch_size * caption_length]
                 captions = captions[:,1:].contiguous()
+                for i in range(captions.size(0)):
+                    end_token_indices = (captions[i] == 50256).nonzero()
+                    if end_token_indices.numel() > 0:
+                        col = end_token_indices[0]
+                        if col < captions.size(1) - 1:
+                            captions[i, col + 1:] = -100
                 targets_flat = captions.reshape(-1)
 
                 loss = criterion(logits_flat, targets_flat)
@@ -277,7 +301,7 @@ while epoch < epochs:
     if model.peft_type == "lora":
         peft_state_dicts = lora.lora_state_dict(model, bias='lora_only')
     elif model.peft_type == "adapter":
-        peft_list = [ '.downsample', '.upsample']
+        peft_list = [ '.downsample', '.upsample', '.ln_1', '.ln_2', '.ln_3']
         for name, weight in model.state_dict().items():
             if any(w in name for w in peft_list):
                 peft_state_dicts[name] = weight
@@ -288,16 +312,16 @@ while epoch < epochs:
             'layer_state_dicts': layer_state_dicts,
             'peft_state_dicts': peft_state_dicts,
         }
-        checkpoint_path = os.path.join('./model_checkpoint', f'Adapter_best_{epoch}.pth')
+        checkpoint_path = os.path.join('./model_checkpoint', f'{PEFT_train_type}_best_{epoch}.pth')
         torch.save(checkpoint, checkpoint_path)
     else:
         checkpoint = {
-            'epoch': epoch,
+            # 'epoch': epoch,
             'layer_state_dicts': layer_state_dicts,
             'peft_state_dicts': peft_state_dicts,
-            'optimizer_state_dict': optimizer.state_dict(),
-            'scheduler_state_dict': scheduler.state_dict(),
+            # 'optimizer_state_dict': optimizer.state_dict(),
+            # 'scheduler_state_dict': scheduler.state_dict(),
         }
-        checkpoint_path = os.path.join('./model_checkpoint', f'Adapter_{epoch}.pth')
+        checkpoint_path = os.path.join('./model_checkpoint', f'{PEFT_train_type}_{epoch}.pth')
         torch.save(checkpoint, checkpoint_path)
     epoch+=1

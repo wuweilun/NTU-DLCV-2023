@@ -7,28 +7,29 @@ import loralib as lora
 
 class Config:
 
-    def __init__(self, checkpoint=None, peft_type ="adapter", atten_map_flag=False):
+    def __init__(self, checkpoint=None, peft_type ="adapter", atten_map_flag=False, cross_n_embd=384):
         self.n_layer = 12
         self.n_head = 12
         self.n_embd = 768
         self.vocab_size = 50257
         self.block_size = 1024
         self.checkpoint = checkpoint
-        self.adapter_size = int(self.n_embd * 0.25)
+        self.adapter_size = int(self.n_embd * 0.5)
         self.peft_type = peft_type
         self.dropout = 0.1
         self.atten_map_flag = atten_map_flag
-        self.cross_n_embd = 384
+        self.cross_n_embd = cross_n_embd
 
 class Attention(nn.Module):
 
     def __init__(self, cfg):
         super().__init__()
         if cfg.peft_type == "lora":
-            self.c_attn = lora.Linear(cfg.n_embd, 3 * cfg.n_embd, r=4)
+            self.c_attn = lora.Linear(cfg.n_embd, 3 * cfg.n_embd, r=8)
+            self.c_proj = lora.Linear(cfg.n_embd, cfg.n_embd, r=8)
         else:
             self.c_attn = nn.Linear(cfg.n_embd, 3 * cfg.n_embd)
-        self.c_proj = nn.Linear(cfg.n_embd, cfg.n_embd)
+            self.c_proj = nn.Linear(cfg.n_embd, cfg.n_embd)
         self.n_head = cfg.n_head
         self.n_embd = cfg.n_embd
         size = cfg.block_size
@@ -222,6 +223,7 @@ class Decoder(nn.Module):
             atten_map_all.append(atten_map)
         # [layer_num, batch_size, head_num, max_len, encode_size**2]
         atten_map_all = torch.stack(atten_map_all)
+        atten_map_all = torch.mean(atten_map_all, dim=2)
         # x = self.transformer.h(x, x_image)
         x = self.lm_head(self.transformer.ln_f(x))
         if self.cfg.atten_map_flag:
