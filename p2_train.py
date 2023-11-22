@@ -116,7 +116,8 @@ class EncoderDecoder(nn.Module):
         #model_name = 'vit_base_patch16_clip_384.laion2b_ft_in12k_in1k' #no use
         #model_name = 'vit_base_patch16_clip_224.laion2b_ft_in12k_in1k' # base line:CIDEr: 0.7633182475486938 | CLIPScore: 0.6982138704627235
         #model_name = 'vit_large_patch14_clip_336.openai_ft_in12k_in1k'
-        model_name = 'vit_large_patch14_clip_224.openai_ft_in12k_in1k'
+        #model_name = 'vit_large_patch14_clip_224.openai_ft_in12k_in1k'
+        model_name = 'vit_large_patch14_clip_224.openai'
         self.encoder = timm.create_model(model_name, pretrained=True, num_classes=0)
         for param in self.encoder.parameters():
             param.requires_grad = False
@@ -169,7 +170,7 @@ model.to(device)
 best_val_loss = 100.0
 
 epoch = 0
-epochs = 10
+epochs = 20
 checkpoint = False
 checkpoint_name = 'Adapter_best_9.pth'
 checkpoint_path = os.path.join('./model_checkpoint', checkpoint_name)
@@ -212,8 +213,9 @@ if checkpoint is True:
     # epoch = checkpoint_info['epoch'] + 1
     # model.load_state_dict(checkpoint_info['model_state_dict'])
     state_dict = torch.load(checkpoint_path)
-    model.load_state_dict(state_dict['layer_state_dicts'], strict=False)
-    model.load_state_dict(state_dict['peft_state_dicts'], strict=False)
+    # model.load_state_dict(state_dict['layer_state_dicts'], strict=False)
+    # model.load_state_dict(state_dict['peft_state_dicts'], strict=False)
+    model.load_state_dict(state_dict, strict=False)
     # optimizer.load_state_dict(checkpoint_info['optimizer_state_dict'])
     
 print("Params: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
@@ -291,37 +293,39 @@ while epoch < epochs:
         avg_val_loss = val_loss / len(val_dataloader)
         print(f"Validation Loss: {avg_val_loss:.4f}")
 
-    layer_state_dicts = {}
-    layer_list = ['.query', '.key', '.value', 'c_proj_cross']
-    for name, weight in model.state_dict().items():
-        if any(w in name for w in layer_list):
-            #print(name)
-            layer_state_dicts[name] = weight
-    peft_state_dicts = {}
-    if model.peft_type == "lora":
-        peft_state_dicts = lora.lora_state_dict(model, bias='lora_only')
-    elif model.peft_type == "adapter":
-        peft_list = [ '.downsample', '.upsample', '.ln_1', '.ln_2', '.ln_3']
-        for name, weight in model.state_dict().items():
-            if any(w in name for w in peft_list):
-                peft_state_dicts[name] = weight
+    # layer_state_dicts = {}
+    # layer_list = ['.query', '.key', '.value', 'c_proj_cross']
+    # for name, weight in model.state_dict().items():
+    #     if any(w in name for w in layer_list):
+    #         #print(name)
+    #         layer_state_dicts[name] = weight
+    # peft_state_dicts = {}
+    # if model.peft_type == "lora":
+    #     peft_state_dicts = lora.lora_state_dict(model, bias='lora_only')
+    # elif model.peft_type == "adapter":
+    #     peft_list = [ '.downsample', '.upsample', '.ln_1', '.ln_2', '.ln_3']
+    #     for name, weight in model.state_dict().items():
+    #         if any(w in name for w in peft_list):
+    #             peft_state_dicts[name] = weight
+    trainable_weights = [name for name, param in model.named_parameters() if param.requires_grad == True]
+    save_weights = {k: v for k, v in model.state_dict().items() if k in trainable_weights}
     # Save the model with the best CIDEr score
     if avg_val_loss < best_val_loss:
         best_val_loss = avg_val_loss
-        checkpoint = {
-            'layer_state_dicts': layer_state_dicts,
-            'peft_state_dicts': peft_state_dicts,
-        }
+        # checkpoint = {
+        #     'layer_state_dicts': layer_state_dicts,
+        #     'peft_state_dicts': peft_state_dicts,
+        # }
         checkpoint_path = os.path.join('./model_checkpoint', f'{PEFT_train_type}_best_{epoch}.pth')
-        torch.save(checkpoint, checkpoint_path)
+        torch.save(save_weights, checkpoint_path)
     else:
-        checkpoint = {
-            # 'epoch': epoch,
-            'layer_state_dicts': layer_state_dicts,
-            'peft_state_dicts': peft_state_dicts,
-            # 'optimizer_state_dict': optimizer.state_dict(),
-            # 'scheduler_state_dict': scheduler.state_dict(),
-        }
+        # checkpoint = {
+        #     'epoch': epoch,
+        #     'layer_state_dicts': layer_state_dicts,
+        #     'peft_state_dicts': peft_state_dicts,
+        #     'optimizer_state_dict': optimizer.state_dict(),
+        #     'scheduler_state_dict': scheduler.state_dict(),
+        # }
         checkpoint_path = os.path.join('./model_checkpoint', f'{PEFT_train_type}_{epoch}.pth')
-        torch.save(checkpoint, checkpoint_path)
+        torch.save(save_weights, checkpoint_path)
     epoch+=1
