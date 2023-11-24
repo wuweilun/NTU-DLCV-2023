@@ -12,7 +12,6 @@ from decoder import Decoder, Config
 from tqdm import tqdm
 import json
 import os
-from p2_evaluate import CIDERScore, getGTCaptions
 import torch.nn.functional as F
 import loralib as lora
 from torch.cuda.amp import autocast, GradScaler
@@ -78,7 +77,6 @@ with open(train_json_path, 'r') as f:
 with open(val_json_path, 'r') as f:
     val_data = json.load(f)
 
-val_gts = getGTCaptions(val_data)
 train_transform = transforms.Compose([
     #transforms.Resize((336,336)),  # Adjust size as needed 336
     transforms.Resize((224,224)),  
