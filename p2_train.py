@@ -99,15 +99,7 @@ train_dataloader = DataLoader(train_dataset, batch_sampler=batch_sampler_train_d
 
 val_dataset = CustomDataset(annotations=val_data['annotations'], images=val_data['images'], image_folder= val_image_folder, tokenizer=tokenizer, transform=val_transform)
 val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False, num_workers=4)
-
-# tmp=0
-# for annotation in train_data['annotations']:
-#     caption = annotation.get('caption', '')
-#     caption_tokens = tokenizer.encode(caption, allowed_special=[''])
-#     #print(len(caption_tokens))
-#     if  64 < len(caption_tokens):
-#         tmp+=1
-# print(tmp)   
+ 
 class EncoderDecoder(nn.Module):
     def __init__(self, decoder_checkpoint=None, peft_type="adapter"):
         super(EncoderDecoder, self).__init__()
@@ -170,7 +162,7 @@ model.to(device)
 best_val_loss = 100.0
 
 epoch = 0
-epochs = 20
+epochs = 5
 checkpoint = False
 checkpoint_name = 'Adapter_best_9.pth'
 checkpoint_path = os.path.join('./model_checkpoint', checkpoint_name)
@@ -209,12 +201,7 @@ scheduler = CosineAnnealingWarmupRestarts(
 
 if checkpoint is True:
     # # load checkpoint
-    # checkpoint_info = torch.load(checkpoint_path)
-    # epoch = checkpoint_info['epoch'] + 1
-    # model.load_state_dict(checkpoint_info['model_state_dict'])
     state_dict = torch.load(checkpoint_path)
-    # model.load_state_dict(state_dict['layer_state_dicts'], strict=False)
-    # model.load_state_dict(state_dict['peft_state_dicts'], strict=False)
     model.load_state_dict(state_dict, strict=False)
     # optimizer.load_state_dict(checkpoint_info['optimizer_state_dict'])
     
@@ -234,7 +221,6 @@ while epoch < epochs:
 
             # Flatten caption_length and batch_size to get logits with shape [batch_size * caption_length, vocab_size]
             outputs = outputs[:, :-1,:].contiguous()
-            #print(outputs.shape)
             logits_flat = outputs.reshape(-1, 50257)
             caption_length=63
             
@@ -273,7 +259,6 @@ while epoch < epochs:
                 outputs = model(images, captions)
                 # Flatten caption_length and batch_size to get logits with shape [batch_size * caption_length, vocab_size]
                 outputs = outputs[:, :-1,:].contiguous()
-                #print(outputs.shape)
                 logits_flat = outputs.reshape(-1, 50257)
                 caption_length=63
                 
