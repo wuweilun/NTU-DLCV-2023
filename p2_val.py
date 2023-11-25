@@ -4,7 +4,7 @@ import torchvision.transforms as transforms
 from PIL import Image
 from torch import nn
 from tokenizer import BPETokenizer
-from decoder import Decoder, Config
+from decoder import Decoder, Config, PrefixEncoder
 from torch.utils.data import DataLoader, Dataset
 import json
 import os
@@ -51,7 +51,11 @@ tokenizer = BPETokenizer(encoder_file=encoder_json_path, vocab_file=vocab_file_p
 class EncoderDecoder(nn.Module):
     def __init__(self, decoder_checkpoint=None, peft_type="adapter"):
         super(EncoderDecoder, self).__init__()
-        #model_name = 'vit_base_patch16_clip_224.laion2b_ft_in12k_in1k'
+        #model_name = 'vit_huge_patch14_clip_336.laion2b_ft_in12k_in1k'
+        #model_name = 'vit_large_patch14_clip_224.openai_ft_in12k_in1k'
+        #model_name = 'vit_base_patch16_clip_384.laion2b_ft_in12k_in1k' #no use
+        #model_name = 'vit_base_patch16_clip_224.laion2b_ft_in12k_in1k' # base line:CIDEr: 0.7633182475486938 | CLIPScore: 0.6982138704627235
+        #model_name = 'vit_large_patch14_clip_336.openai_ft_in12k_in1k'
         #model_name = 'vit_large_patch14_clip_224.openai_ft_in12k_in1k'
         model_name = 'vit_large_patch14_clip_224.openai'
         self.encoder = timm.create_model(model_name, pretrained=True, num_classes=0)
@@ -60,23 +64,30 @@ class EncoderDecoder(nn.Module):
         for submodule in self.encoder.children():
             for param in submodule.parameters():
                 param.requires_grad = False
-                
+        
         self.peft_type = peft_type
         if self.peft_type == "adapter":
             cross_n_embd = 384
         elif self.peft_type == "lora":
             cross_n_embd = 768
+        elif self.peft_type == "prefixTuning":
+            cross_n_embd = 384
         self.decoder_cfg = Config(checkpoint=decoder_checkpoint, peft_type=peft_type, cross_n_embd=cross_n_embd)
-        self.decoder = Decoder(cfg=self.decoder_cfg, )
+        if self.peft_type == "prefixTuning":
+            self.prefix_encoder = PrefixEncoder(cfg=self.decoder_cfg)
+        self.decoder = Decoder(cfg=self.decoder_cfg)
         for param in self.decoder.parameters():
             param.requires_grad = False
             
     def forward(self, images, captions):
         # Forward propagation
         features = self.encoder.forward_features(images)
-        outputs = self.decoder(captions, features)
+        past_key_values_prompt = None
+        if self.peft_type == "prefixTuning":
+            past_key_values_prompt = self.prefix_encoder(batch_size=32)
+        outputs = self.decoder(captions, features, past_key_values_prompt)
         return outputs
-    
+
 model = EncoderDecoder(decoder_checkpoint=decoder_checkpoint, peft_type=PEFT_train_type)
 val_dataset = CustomDataset(val_image_folder, val_transform)
 val_dataloader = DataLoader(val_dataset, batch_size=1, shuffle=False, num_workers=4)

@@ -35,14 +35,26 @@ class Attention(nn.Module):
         size = cfg.block_size
         self.register_buffer('bias', torch.tril(torch.ones(size, size)).view(1, 1, size, size))
 
-    def forward(self, x):
+    def forward(self, x, layer_past=None):
+        
         B, T, C = x.size() # batch, context, embedding
         q, k, v  = self.c_attn(x).split(self.n_embd, dim=2)
         k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)
         q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)
         v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)
+        if layer_past is not None:
+            # print(layer_past.shape) #[2, 32, 12, 20, 64]
+            past_key, past_value = layer_past
+            # print(past_key.shape, past_value.shape) # [32, 12, 20, 64]
+            k = torch.cat((past_key, k), dim=2)
+            v = torch.cat((past_value, v), dim=2)
+            # print(k.shape) # [32, 12, 84, 64]
         att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
-        att = att.masked_fill(self.bias[:,:,:T,:T] == 0, float('-inf'))
+        # print(att.shape) # prefixTuning[32, 12, 64, 84]
+        if layer_past is not None:
+            att = att.masked_fill(self.bias[:,:,:T,:T+20] == 0, float('-inf'))
+        else:
+            att = att.masked_fill(self.bias[:,:,:T,:T] == 0, float('-inf'))
         att = F.softmax(att, dim=-1)
         return self.c_proj((att @ v).transpose(1, 2).contiguous().view(B, T, C))
 
@@ -113,7 +125,7 @@ class Block(nn.Module):
             ('c_proj', nn.Linear(4 * cfg.n_embd, cfg.n_embd))
         ]))
 
-    def forward(self, x, x_image):
+    def forward(self, x, x_image, past_layer=None):
         # x = x + self.attn(self.ln_1(x))
         # x = x + self.attn_cross(self.ln_2(x), x_image)
         # x = x + self.mlp(self.ln_3(x))
@@ -127,8 +139,8 @@ class Block(nn.Module):
             x_cross, atten_map = self.attn_cross(self.ln_2(x), x_image)
             x = x + self.dropout_2(x_cross)
             x = x + self.dropout_3(self.mlp(self.ln_3(x)))
-        else:
-            x = x + self.dropout_1(self.attn(self.ln_1(x)))
+        elif self.cfg.peft_type == "prefixTuning":
+            x = x + self.dropout_1(self.attn(self.ln_1(x), past_layer))
             x_cross, atten_map = self.attn_cross(self.ln_2(x), x_image)
             x = x + self.dropout_2(x_cross)
             x = x + self.dropout_3(self.mlp(self.ln_3(x)))
@@ -158,15 +170,23 @@ class Decoder(nn.Module):
                     state_dict[key] = value.t()
             self.transformer.load_state_dict(state_dict, strict=False)
             
-    def forward(self, x, x_image):
+    def forward(self, x, x_image, layer_past=None):
         x = torch.narrow(x, 1, 0, min(x.size(1), self.block_size))
         pos = torch.arange(x.size()[1], dtype=torch.long, device=x.device).unsqueeze(0)
         x = self.transformer.wte(x) + self.transformer.wpe(pos)
 
         atten_map_all = []
-        for block in self.transformer.h:
-            x, atten_map = block(x, x_image)
-            atten_map_all.append(atten_map)
+        if layer_past is not None:
+            block_idx=0
+            for block in self.transformer.h:
+                x, atten_map = block(x, x_image, layer_past[block_idx])
+                atten_map_all.append(atten_map)
+                block_idx+=1
+        else: 
+            for block in self.transformer.h:
+                x, atten_map = block(x, x_image)
+                atten_map_all.append(atten_map)
+                
         # [layer_num, batch_size, head_num, max_len, encode_size**2]
         atten_map_all = torch.stack(atten_map_all)
         atten_map_all = torch.mean(atten_map_all, dim=2)
@@ -178,81 +198,45 @@ class Decoder(nn.Module):
             return x
     
 class PrefixEncoder(torch.nn.Module):
-    def __init__(self, config):
-        super().__init__()
-        self.prefix_projection = config.prefix_projection
-        token_dim = config.token_dim
-        num_layers = config.num_layers
-        encoder_hidden_size = config.encoder_hidden_size
-        num_virtual_tokens = config.num_virtual_tokens
-        if self.prefix_projection and not config.inference_mode:
-            # Use a two-layer MLP to encode the prefix
-            self.embedding = torch.nn.Embedding(num_virtual_tokens, token_dim)
-            self.transform = torch.nn.Sequential(
-                torch.nn.Linear(token_dim, encoder_hidden_size),
-                torch.nn.Tanh(),
-                torch.nn.Linear(encoder_hidden_size, num_layers * 2 * token_dim),
-            )
-        else:
-            self.embedding = torch.nn.Embedding(num_virtual_tokens, num_layers * 2 * token_dim)
-
-    def forward(self, prefix: torch.Tensor):
-        if self.prefix_projection:
-            prefix_tokens = self.embedding(prefix)
-            past_key_values = self.transform(prefix_tokens)
-        else:
-            past_key_values = self.embedding(prefix)
-        return past_key_values
-    
-class DecoderPrefixTuning(nn.Module):
-
     def __init__(self, cfg):
         super().__init__()
-        # self.prefix_config = [
-        #     peft_type="PREFIX_TUNING",
-        #     task_type="SEQ_2_SEQ_LM",
-        #     num_virtual_tokens=20,
-        #     token_dim=768,
-        #     num_transformer_submodules=1,
-        #     num_attention_heads=12,
-        #     num_layers=12,
-        #     encoder_hidden_size=768,
-        #     prefix_projection=True,
-        #     inference_mode=False,
-        # ]
-        self.cfg = cfg
-        self.block_size = cfg.block_size
-        self.prefix_encoder = PrefixEncoder(prefix_config)  # Add PrefixEncoder
-        self.transformer = nn.ModuleDict(dict(
-            wte = nn.Embedding(cfg.vocab_size, cfg.n_embd),
-            wpe = nn.Embedding(cfg.block_size, cfg.n_embd),
-            h = nn.ModuleList([Adapter(cfg) for _ in range(cfg.n_layer)]),
-            ln_f = nn.LayerNorm(cfg.n_embd)
-        ))
-        self.lm_head = nn.Linear(cfg.n_embd, cfg.vocab_size, bias=False)
-        self.transformer.wte.weight = self.lm_head.weight
+        self.token_dim = cfg.n_embd
+        self.num_layers = cfg.n_layer
+        self.encoder_hidden_size = cfg.n_embd
+        self.num_virtual_tokens = 20
+
+        self.match_n_layer = cfg.n_layer
+        self.match_n_head = cfg.n_head
+        self.match_n_embd = cfg.n_embd // cfg.n_head
         
-        if self.cfg.checkpoint is not None:
-            state_dict = torch.load(self.cfg.checkpoint)
-            transposed = [ '.c_attn.weight', '.c_fc.weight', '.c_proj.weight' ]
-            for key, value in state_dict.items():
-                #print(key)
-                if any(key.endswith(w) for w in transposed):
-                    #print(key)
-                    state_dict[key] = value.t()
-            self.transformer.load_state_dict(state_dict, strict=False)
-            
-    def forward(self, x, x_image):
-        x = torch.narrow(x, 1, 0, min(x.size(1), self.block_size))
-        pos = torch.arange(x.size()[1], dtype=torch.long, device=x.device).unsqueeze(0)
-        x = self.transformer.wte(x) + self.transformer.wpe(pos)
+        self.input_tokens = torch.arange(self.num_virtual_tokens).long()
+        # Use a two-layer MLP to encode the prefix
+        self.embedding = torch.nn.Embedding(self.num_virtual_tokens, self.token_dim)
+        self.transform = torch.nn.Sequential(
+            torch.nn.Linear(self.token_dim, self.encoder_hidden_size),
+            torch.nn.Tanh(),
+            torch.nn.Linear(self.encoder_hidden_size, self.num_layers * 2 * self.token_dim),
+        )
+        self.prefix_dropout = nn.Dropout(cfg.dropout)
+
+    def forward(self, batch_size):
+        # Forward
+        input_tokens = self.input_tokens.unsqueeze(0).expand(batch_size, -1).to('cuda')
+        prefix_tokens = self.embedding(input_tokens)
+        past_key_values = self.transform(prefix_tokens)
+
+        # Resize
+        past_key_values = past_key_values.view(
+            batch_size,
+            self.num_virtual_tokens,
+            self.match_n_layer * 2,
+            self.match_n_head,
+            self.match_n_embd,
+        )
         
-        # Add PrefixEncoder to encode the prefix
-        prefix = torch.randint(0, 20, (x.size(0), 20))
-        prefix_embedding = self.prefix_encoder(prefix)
-        x = x + prefix_embedding
+        # Dropout
+        past_key_values = self.prefix_dropout(past_key_values)
         
-        for block in self.transformer.h:
-            x = block(x, x_image)
-        x = self.lm_head(self.transformer.ln_f(x))
-        return x
+        # Transpose -> [match_n_layer*2, batch_size, match_n_head, prefix_seq_len, match_n_embd]
+        past_key_values = past_key_values.permute([2, 0, 3, 1, 4]).split(2)
+        return past_key_values

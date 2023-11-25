@@ -8,7 +8,7 @@ from PIL import Image
 from torch import nn
 import torch.optim as optim
 from tokenizer import BPETokenizer
-from decoder import Decoder, Config
+from decoder import Decoder, Config, PrefixEncoder
 from tqdm import tqdm
 import json
 import os
@@ -91,9 +91,10 @@ val_transform = transforms.Compose([
 ])
 
 train_dataset = CustomDataset(annotations=train_data['annotations'], images=train_data['images'], image_folder= train_image_folder, tokenizer=tokenizer, transform=train_transform)
-sampler_train_dataset = torch.utils.data.RandomSampler(train_dataset)
-batch_sampler_train_dataset = torch.utils.data.BatchSampler(sampler_train_dataset, batch_size=32, drop_last=True)
-train_dataloader = DataLoader(train_dataset, batch_sampler=batch_sampler_train_dataset, num_workers=4)
+# sampler_train_dataset = torch.utils.data.RandomSampler(train_dataset)
+# batch_sampler_train_dataset = torch.utils.data.BatchSampler(sampler_train_dataset, batch_size=32, drop_last=True)
+# train_dataloader = DataLoader(train_dataset, batch_sampler=batch_sampler_train_dataset, num_workers=4)
+train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=4)
 
 val_dataset = CustomDataset(annotations=val_data['annotations'], images=val_data['images'], image_folder= val_image_folder, tokenizer=tokenizer, transform=val_transform)
 val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False, num_workers=4)
@@ -120,7 +121,11 @@ class EncoderDecoder(nn.Module):
             cross_n_embd = 384
         elif self.peft_type == "lora":
             cross_n_embd = 768
+        elif self.peft_type == "prefixTuning":
+            cross_n_embd = 384
         self.decoder_cfg = Config(checkpoint=decoder_checkpoint, peft_type=peft_type, cross_n_embd=cross_n_embd)
+        if self.peft_type == "prefixTuning":
+            self.prefix_encoder = PrefixEncoder(cfg=self.decoder_cfg)
         self.decoder = Decoder(cfg=self.decoder_cfg)
         for param in self.decoder.parameters():
             param.requires_grad = False
@@ -128,7 +133,10 @@ class EncoderDecoder(nn.Module):
     def forward(self, images, captions):
         # Forward propagation
         features = self.encoder.forward_features(images)
-        outputs = self.decoder(captions, features)
+        past_key_values_prompt = None
+        if self.peft_type == "prefixTuning":
+            past_key_values_prompt = self.prefix_encoder(batch_size=32)
+        outputs = self.decoder(captions, features, past_key_values_prompt)
         return outputs
 
 model = EncoderDecoder(decoder_checkpoint=decoder_checkpoint, peft_type=PEFT_train_type)
@@ -238,7 +246,7 @@ while epoch < epochs:
             #print(loss)
         scaler.scale(loss).backward()
         #scaler.unscale_(optimizer)
-        nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        #nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         scaler.step(optimizer)
         scaler.update()
         scheduler.step()
@@ -309,6 +317,6 @@ while epoch < epochs:
         #     'optimizer_state_dict': optimizer.state_dict(),
         #     'scheduler_state_dict': scheduler.state_dict(),
         # }
-        checkpoint_path = os.path.join('./model_checkpoint', f'{PEFT_train_type}_{epoch}.pth')
+        checkpoint_path = os.path.join('./model_checkpoint', f'{PEFT_train_type}_best_{epoch}.pth')
         torch.save(save_weights, checkpoint_path)
     epoch+=1
