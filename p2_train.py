@@ -135,7 +135,7 @@ class EncoderDecoder(nn.Module):
         features = self.encoder.forward_features(images)
         past_key_values_prompt = None
         if self.peft_type == "prefixTuning":
-            past_key_values_prompt = self.prefix_encoder(batch_size=32)
+            past_key_values_prompt = self.prefix_encoder(batch_size=captions.size(0))
         outputs = self.decoder(captions, features, past_key_values_prompt)
         return outputs
 

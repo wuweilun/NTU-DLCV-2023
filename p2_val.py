@@ -84,7 +84,7 @@ class EncoderDecoder(nn.Module):
         features = self.encoder.forward_features(images)
         past_key_values_prompt = None
         if self.peft_type == "prefixTuning":
-            past_key_values_prompt = self.prefix_encoder(batch_size=32)
+            past_key_values_prompt = self.prefix_encoder(batch_size=captions.size(0))
         outputs = self.decoder(captions, features, past_key_values_prompt)
         return outputs
 
@@ -123,7 +123,11 @@ for filename in tqdm(filenames):
         features = model.encoder.forward_features(image)
         
         for i in range(max_len-1):
-            predictions = model.decoder(caption_input, features)
+            past_key_values_prompt = None
+            if PEFT_train_type == "prefixTuning":
+                past_key_values_prompt = model.prefix_encoder(batch_size=caption_input.size(0))
+            predictions = model.decoder(caption_input, features, past_key_values_prompt)
+            #predictions = model.decoder(caption_input, features)
             predictions = predictions[:, i, :]
             next_char = torch.argmax(predictions, axis=-1)
             if next_char[0] == 50256:
