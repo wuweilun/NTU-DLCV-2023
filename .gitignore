@@ -11,3 +11,4 @@ utils/__pycache__/*
 models/__pycache__/*
 ckpts/*
 results/*
+bash_output/*
