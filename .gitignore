@@ -10,3 +10,4 @@ lightning_logs/*
 utils/__pycache__/*
 models/__pycache__/*
 ckpts/*
+results/*
