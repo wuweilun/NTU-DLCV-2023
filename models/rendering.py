@@ -153,7 +153,8 @@ def render_rays(models,
         noise = torch.randn(sigmas.shape, device=sigmas.device) * noise_std
 
         # compute alpha by the formula (3)
-        alphas = 1-torch.exp(-deltas*torch.relu(sigmas+noise)) # (N_rays, N_samples_)
+        #alphas = 1-torch.exp(-deltas*torch.relu(sigmas+noise)) # (N_rays, N_samples_)
+        alphas = 1-torch.exp(-deltas*torch.nn.Softplus()(sigmas+noise)) # (N_rays, N_samples_)
         alphas_shifted = \
             torch.cat([torch.ones_like(alphas[:, :1]), 1-alphas+1e-10], -1) # [1, a1, a2, ...]
         weights = \
