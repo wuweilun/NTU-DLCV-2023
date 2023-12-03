@@ -298,7 +298,8 @@ class KlevrDataset(Dataset):
                               1) # (H*W, 8)
 
             sample = {'rays': rays.float(),
-                      'c2w': c2w}
+                      'c2w': c2w,
+                      'name': image_id}
             if self.get_rgb:
                 sample['rgbs'] = img
                 sample['valid_mask'] = valid_mask
@@ -322,7 +323,8 @@ class KlevrDataset(Dataset):
                               1) # (H*W, 8)
 
             sample = {'rays': rays.float(),
-                      'c2w': c2w}
+                      'c2w': c2w,
+                      'name': image_id}
 
 
         return sample
