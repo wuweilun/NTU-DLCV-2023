@@ -1,3 +1,2 @@
 #!/bin/bash
-python3 .py $1 $2
-# TODO - run your inference Python3 code
+python3 test.py --root_dir $1 --folder_output $2 --ckpt_path layer8_embd256.ckpt

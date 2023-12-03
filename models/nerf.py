@@ -40,7 +40,7 @@ class Embedding(nn.Module):
 
 class NeRF(nn.Module):
     def __init__(self,
-                 D=8, W=512,
+                 D=8, W=256,
                  in_channels_xyz=63, in_channels_dir=27, 
                  skips=[4]):
         """
