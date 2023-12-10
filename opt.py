@@ -17,11 +17,11 @@ def get_opts():
                         help='number of coarse samples')
     parser.add_argument('--N_importance', type=int, default=128,
                         help='number of additional fine samples')
-    parser.add_argument('--use_disp', default=False, action="store_true",
+    parser.add_argument('--use_disp', default=True, action="store_true",
                         help='use disparity depth sampling')
-    parser.add_argument('--perturb', type=float, default=1.0,
+    parser.add_argument('--perturb', type=float, default=0.0,
                         help='factor to perturb depth sampling points')
-    parser.add_argument('--noise_std', type=float, default=1.0,
+    parser.add_argument('--noise_std', type=float, default=0.0,
                         help='std dev of noise added to regularize sigma')
         
     parser.add_argument('--loss_type', type=str, default='mse',
@@ -30,7 +30,7 @@ def get_opts():
 
     parser.add_argument('--batch_size', type=int, default=1024,
                         help='batch size')
-    parser.add_argument('--chunk', type=int, default=32*1024,
+    parser.add_argument('--chunk', type=int, default=32*1024*4,
                         help='chunk size to split the input to avoid OOM')
     parser.add_argument('--num_epochs', type=int, default=16,
                         help='number of training epochs')
