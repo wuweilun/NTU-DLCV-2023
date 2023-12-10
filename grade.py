@@ -100,12 +100,12 @@ def render_viewpoints(test_image_path, gt_image_path):
         psnrs.append(p)
         ssims.append(rgb_ssim(rgb, gt, max_val=1))
         # lpips_alex.append(rgb_lpips(rgb, gt, net_name='alex', device=device))
-        # lpips_vgg.append(rgb_lpips(rgb, gt, net_name='vgg', device=device))
+        lpips_vgg.append(rgb_lpips(rgb, gt, net_name='vgg', device=device))
 
     if len(psnrs):
         print('Testing psnr', np.mean(psnrs), '(avg)')
         print('Testing ssim', np.mean(ssims), '(avg)')
-        # print('Testing lpips (vgg)', np.mean(lpips_vgg), '(avg)')
+        print('Testing lpips (vgg)', np.mean(lpips_vgg), '(avg)')
         # print('Testing lpips (alex)', np.mean(lpips_alex), '(avg)')
 
     return 
