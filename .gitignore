@@ -5,6 +5,8 @@
 student_data/*
 sample_submission.json
 VALOR/*
-*/data/*
-*/pretrained/*
-*/checkpoint/*
+data/*
+pretrained/*
+checkpoint/*
+*/__pycache__/*
+/__pycache__/*
