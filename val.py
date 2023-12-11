@@ -118,21 +118,23 @@ def main(args):
     best_acc = 0.
 
     misc.load_model(args=args, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler)
-
+    all_predictions = {"Interaction": [], "Sequence": [], "Prediction": [], "Feasibility": []}
     print(f"Start Validation")
     start_time = time.time()
-
-    val_stats = val_one_epoch(model_without_ddp, data_loader_val, optimizer, args.epochs, args=args)
-
-    log_stats = {**{f'val_{k}': v for k, v in val_stats.items()}}
-
-    if args.output_dir and misc.is_main_process():
-        with open(os.path.join(args.output_dir, "log.txt"), mode="a", encoding="utf-8") as f:
-            f.write(json.dumps(log_stats) + "\n")
-
+    model.eval()
+    for data in tqdm(data_loader_val):
+        with torch.no_grad():
+            logits = model(data, inference=True)
+        question_id = data['question_id'][0]
+        count = (logits != 0).sum(-1)
+        prediction = (logits.sum(-1) / count).argmin(-1)
+        #print(question_id, question_id.split('_')[0], prediction[0].cpu().tolist())
+        all_predictions[question_id.split('_')[0]].append({"question_id": question_id, "answer": prediction[0].cpu().tolist()})
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Validation time {}'.format(total_time_str))
+    with open('val_predictions.json', 'w') as json_file:
+        json.dump(all_predictions, json_file, indent=2)
 
 
 if __name__ == '__main__':
