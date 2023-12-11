@@ -10,6 +10,7 @@ class STAR(BaseDataset):
         self.answer_mapping = {0: '(A)', 1: '(B)', 2: '(C)', 3: '(D)'}
         self.qtype_mapping = {'Interaction': 1, 'Sequence': 2, 'Prediction': 3, 'Feasibility': 4}
         self.num_options = 4
+        self.split = split
         print(f"Num {split} data: {len(self.data)}") 
 
 
@@ -20,8 +21,10 @@ class STAR(BaseDataset):
             
         options = {x['choice_id']: x['choice'] for x in self.data[idx]['choices']}
         options = [options[i] for i in range(self.num_options)]
-        answer = options.index(self.data[idx]['answer'])
-        
+        if self.split == "test":
+            answer = 0
+        else:
+            answer = options.index(self.data[idx]['answer'])
         q_text = f"Question: {question}\n"
         o_text = "Choices: \n"
         for i in range(self.num_options):
@@ -57,8 +60,9 @@ class STAR(BaseDataset):
         text_id, label, video_start, video_index, label_mask = self._get_text_token(text, answer)
         start, end = round(self.data[idx]['start']), round(self.data[idx]['end'])
         video, video_len = self._get_video(f'{vid}', start, end)
+        question_id = self.data[idx]['question_id']
         return {"vid": vid, "video": video, "video_len": video_len, "text": text, "text_id": text_id, "label": label, "video_start": video_start,
-                "video_index": video_index, "label_mask": label_mask, "qid": idx, "answer": answer, "qtype": qtype}
+                "video_index": video_index, "label_mask": label_mask, "qid": idx, "answer": answer, "qtype": qtype, "question_id": question_id}
 
 
     def __len__(self):
