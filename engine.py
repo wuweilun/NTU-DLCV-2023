@@ -4,42 +4,54 @@ import sys
 from typing import Iterable
 import util.misc as misc
 import util.lr_sched as lr_sched
+from torch.cuda.amp import autocast, GradScaler
 
 def train_one_epoch(model: torch.nn.Module, data_loader: Iterable, optimizer: torch.optim.Optimizer, epoch: int, loss_scaler, args=None):
     model.train(True)
     metric_logger = misc.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     header = 'Epoch: [{}]'.format(epoch)
-    print_freq = int(len(data_loader) / 4)
+    print_freq = int(len(data_loader) / 100)
     accum_iter = args.accum_iter
 
     optimizer.zero_grad()
-
+    scaler = GradScaler()
+    
     for data_iter_step, data in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
 
         if data_iter_step % accum_iter == 0:
             lr_sched.adjust_learning_rate(optimizer, data_iter_step / len(data_loader) + epoch, args)
 
-        vqa_loss, vaq_loss, qav_loss = model(data)
-
-        loss = vqa_loss + vaq_loss + qav_loss
-        loss_value = loss.item()
-        vqa_loss_value = vqa_loss.item()
-        vaq_loss_value = vaq_loss.item()
-        qav_loss_value = qav_loss.item()
+        with autocast():
+            vqa_loss, vaq_loss, qav_loss = model(data)
+            # sprint(vqa_loss, vaq_loss, qav_loss)
+            
+            if torch.isnan(vqa_loss) or torch.isnan(vaq_loss) or torch.isnan(qav_loss):
+                print("NaN loss encountered. Skipping this iteration.")
+                scaler.step(optimizer)
+                scaler.update()
+                optimizer.zero_grad()
+                continue
+            loss = vqa_loss + vaq_loss + qav_loss
+            loss_value = loss.item()
+            vqa_loss_value = vqa_loss.item()
+            vaq_loss_value = vaq_loss.item()
+            qav_loss_value = qav_loss.item()
 
         if not math.isfinite(loss_value):
             print("Loss is {}, stopping training".format(loss_value))
             sys.exit(1)
 
         loss = loss / accum_iter
-
-        loss_scaler(loss, optimizer, parameters=model.parameters(), update_grad=(data_iter_step + 1) % accum_iter == 0)
+        scaler.scale(loss).backward()
+        # loss_scaler(loss, optimizer, parameters=model.parameters(), update_grad=(data_iter_step + 1) % accum_iter == 0)
         if (data_iter_step + 1) % accum_iter == 0:
+            scaler.step(optimizer)
+            scaler.update()
             optimizer.zero_grad()
 
-        torch.cuda.synchronize()
-
+        # torch.cuda.synchronize()
+        # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=2.0)
         metric_logger.update(loss=loss_value)
         metric_logger.update(vqa_loss=vqa_loss_value)
         metric_logger.update(vaq_loss=vaq_loss_value)
