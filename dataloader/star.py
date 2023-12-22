@@ -6,13 +6,16 @@ class STAR(BaseDataset):
     def __init__(self, args=None, tokenizer=None, split='train'):
         super().__init__(args, tokenizer, split)
         self.data = json.load(open(f'./data/star/STAR_{split}.json', 'r'))
-        self.features = torch.load(f'./data/star/clipvitl14.pth')
+        self.video_encoder = args.video_encoder
+        if self.video_encoder == 'clipvitl14':
+            self.features = torch.load(f'./data/star/clipvitl14.pth')
+        elif self.video_encoder == 'viclip':
+            self.features = torch.load(f'./data/star/STAR_train_video_feature.pt')
         self.answer_mapping = {0: '(A)', 1: '(B)', 2: '(C)', 3: '(D)'}
         self.qtype_mapping = {'Interaction': 1, 'Sequence': 2, 'Prediction': 3, 'Feasibility': 4}
         self.num_options = 4
         self.split = split
         print(f"Num {split} data: {len(self.data)}") 
-
 
     def _get_text(self, idx):
         question = self.data[idx]["question"].capitalize().strip()
@@ -52,14 +55,24 @@ class STAR(BaseDataset):
             video_len = self.max_feats
 
         return video, video_len
+    
+    def _get_video_viclip(self, question_id):
+        video = self.features[question_id].float()
+        video_len = 1
+
+        return video, video_len
 
     def __getitem__(self, idx):
         vid = self.data[idx]['video_id']
+        qid = self.data[idx]['question_id']
         qtype = self.qtype_mapping[self.data[idx]['question_id'].split('_')[0]]
         text, answer = self._get_text(idx)
         text_id, label, video_start, video_index, label_mask = self._get_text_token(text, answer)
         start, end = round(self.data[idx]['start']), round(self.data[idx]['end'])
-        video, video_len = self._get_video(f'{vid}', start, end)
+        if self.video_encoder == 'clipvitl14':
+            video, video_len = self._get_video(f'{vid}', start, end)
+        elif self.video_encoder == 'viclip':
+            video, video_len = self._get_video_viclip(qid)
         question_id = self.data[idx]['question_id']
         return {"vid": vid, "video": video, "video_len": video_len, "text": text, "text_id": text_id, "label": label, "video_start": video_start,
                 "video_index": video_index, "label_mask": label_mask, "qid": idx, "answer": answer, "qtype": qtype, "question_id": question_id}

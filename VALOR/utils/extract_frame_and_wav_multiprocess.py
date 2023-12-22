@@ -13,8 +13,8 @@ import subprocess
 
 
 ### change diffenrent datasets
-input_path = '../datasets/Charades_v1_480'
-output_path = '../datasets/Charades_v1_480_frame'
+input_path = '/home/ai2lab/Desktop/Charades_v1_480'
+output_path = '/home/ai2lab/Desktop/DLCV-Fall-2023-Final-1-catchingstar/data/Charades_frame'
 data_list = os.listdir(input_path)
 #ffmpeg.input(input_path).output(output_path).run(cmd="/home/wuweilun/anaconda3/envs/pytorch/bin/ffprobe")
 def execCmd(cmd):
@@ -51,7 +51,7 @@ def extract_thread(video_id):
     if not os.path.exists(video_name):
         return
     probe = ffmpeg.probe(video_name)
-    pipline(video_name, probe, output_path, fps=4, sr=22050, duration_target=10)
+    pipline(video_name, probe, output_path, fps=1, sr=22050, duration_target=10)
 
 
 def extract_all(video_ids, thread_num, start):

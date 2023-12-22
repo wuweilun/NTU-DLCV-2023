@@ -66,6 +66,9 @@ def get_args_parser():
     parser.add_argument('--tau', type=float, default=100., help='tau')
     parser.add_argument('--sub', action='store_true', help='subtitles for VLEP and TVQA')
 
+    # video encoder parameters
+    parser.add_argument('--video_encoder', default='clipvitl14', type=str, help='video encoder')
+
     return parser
 
 

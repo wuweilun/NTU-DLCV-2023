@@ -9,3 +9,7 @@ pretrained/*
 checkpoint/*
 */__pycache__/*
 /__pycache__/*
+
+# utils for checking json files and pth files
+look_json.py
+look_pth.py
