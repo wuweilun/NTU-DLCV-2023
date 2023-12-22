@@ -65,6 +65,8 @@ def get_args_parser():
     parser.add_argument('--tau', type=float, default=100., help='tau')
     parser.add_argument('--sub', action='store_true', help='subtitles for VLEP and TVQA')
 
+    # json filename
+    parser.add_argument('--filename', default='test_predictions', help='output prediction filename')
     return parser
 
 
@@ -132,7 +134,7 @@ def main(args):
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Test time {}'.format(total_time_str))
-    with open('test_predictions.json', 'w') as json_file:
+    with open(f'{args.filename}.json', 'w') as json_file:
         json.dump(all_predictions, json_file, indent=2)
 
 if __name__ == '__main__':
