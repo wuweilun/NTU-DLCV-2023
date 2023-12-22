@@ -4,14 +4,14 @@ import sys
 from typing import Iterable
 import util.misc as misc
 import util.lr_sched as lr_sched
-from torch.cuda.amp import autocast
+from torch.cuda.amp import autocast, GradScaler
 
 def train_one_epoch(model: torch.nn.Module, data_loader: Iterable, optimizer: torch.optim.Optimizer, epoch: int, loss_scaler, args=None):
     model.train(True)
     metric_logger = misc.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     header = 'Epoch: [{}]'.format(epoch)
-    print_freq = int(len(data_loader) / 100)
+    print_freq = int(len(data_loader) / 10)
     accum_iter = args.accum_iter
 
     optimizer.zero_grad()
@@ -26,10 +26,13 @@ def train_one_epoch(model: torch.nn.Module, data_loader: Iterable, optimizer: to
             
             if torch.isnan(vqa_loss) and torch.isnan(vaq_loss) and torch.isnan(qav_loss):
                 print("NaN loss encountered. Skipping this iteration.")
-                optimizer.zero_grad()
+                # optimizer.zero_grad()
                 continue
             # loss = vqa_loss + vaq_loss + qav_loss
             loss = 0.0
+            vqa_loss_value = 0.0 
+            vaq_loss_value = 0.0 
+            qav_loss_value = 0.0
             if not torch.isnan(vqa_loss):
                 loss += vqa_loss
                 vqa_loss_value = vqa_loss.item()
