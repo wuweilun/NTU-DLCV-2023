@@ -17,3 +17,4 @@ look_pth.py
 # InternVideo
 InternVid/viclip/__pycache__/*
 *.pth
+InternVid/viclip/*.gz
