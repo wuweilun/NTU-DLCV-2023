@@ -29,7 +29,7 @@ def train_one_epoch(model: torch.nn.Module, data_loader: Iterable, optimizer: to
                 # optimizer.zero_grad()
                 continue
             # loss = vqa_loss + vaq_loss + qav_loss
-            loss = 0.0
+            loss = torch.tensor([0], dtype=torch.float, requires_grad=True).cuda()
             vqa_loss_value = 0.0 
             vaq_loss_value = 0.0 
             qav_loss_value = 0.0
