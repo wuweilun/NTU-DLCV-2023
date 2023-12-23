@@ -13,3 +13,7 @@ checkpoint/*
 # utils for checking json files and pth files
 look_json.py
 look_pth.py
+
+# InternVideo
+InternVid/viclip/__pycache__/*
+*.pth

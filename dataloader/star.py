@@ -10,7 +10,7 @@ class STAR(BaseDataset):
         if self.video_encoder == 'clipvitl14':
             self.features = torch.load(f'./data/star/clipvitl14.pth')
         elif self.video_encoder == 'viclip':
-            self.features = torch.load(f'./data/star/STAR_train_video_feature.pt')
+            self.features = torch.load(f'./data/star/STAR_video_feature.pt', map_location=torch.device('cpu'))
         self.answer_mapping = {0: '(A)', 1: '(B)', 2: '(C)', 3: '(D)'}
         self.qtype_mapping = {'Interaction': 1, 'Sequence': 2, 'Prediction': 3, 'Feasibility': 4}
         self.num_options = 4
