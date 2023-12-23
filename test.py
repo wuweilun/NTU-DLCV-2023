@@ -67,6 +67,9 @@ def get_args_parser():
 
     # json filename
     parser.add_argument('--filename', default='test_predictions', help='output prediction filename')
+    
+    # video encoder parameters
+    parser.add_argument('--video_encoder', default='clipvitl14', type=str, help='video encoder')
     return parser
 
 
@@ -120,6 +123,7 @@ def main(args):
 
     misc.load_model(args=args, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler)
     all_predictions = {"Interaction": [], "Sequence": [], "Prediction": [], "Feasibility": []}
+    all_predictions_prob = {"Interaction": [], "Sequence": [], "Prediction": [], "Feasibility": []}
     print(f"Start Test")
     start_time = time.time()
     model.eval()
@@ -129,13 +133,17 @@ def main(args):
         question_id = data['question_id'][0]
         count = (logits != 0).sum(-1)
         prediction = (logits.sum(-1) / count).argmin(-1)
+        probabilities = torch.softmax(-(logits.sum(-1) / count), dim=-1).cpu().tolist()
         #print(question_id, question_id.split('_')[0], prediction[0].cpu().tolist())
         all_predictions[question_id.split('_')[0]].append({"question_id": question_id, "answer": prediction[0].cpu().tolist()})
+        all_predictions_prob[question_id.split('_')[0]].append({"question_id": question_id, "answer": prediction[0].cpu().tolist(), "probabilities": probabilities[0]})
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Test time {}'.format(total_time_str))
     with open(f'{args.filename}.json', 'w') as json_file:
         json.dump(all_predictions, json_file, indent=2)
+    with open(f'{args.filename}_prob.json', 'w') as json_file:
+        json.dump(all_predictions_prob, json_file, indent=2)
 
 if __name__ == '__main__':
     args = get_args_parser()
