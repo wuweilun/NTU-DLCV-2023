@@ -40,16 +40,21 @@ class Tokenizer:
         return t
 
     def encode_vqa(self, text=None, max_feats=10, split='train', answer_mapping=None, answer=None) -> List[int]:
-        i_text = "Instruction: Predict the answer based on the video and question.\n"
         q_text = text['q_text']
         o_text = text['o_text']
         a_text = text['a_text']
-     
+        if 'h_text' in text:
+            i_text = "Instruction: Predict the answer based on the video and question with hint.\n"
+            h_text = text['h_text']
+            s2 = q_text + h_text + o_text + a_text
+            print(s2)
+        else: 
+            i_text = "Instruction: Predict the answer based on the video and question.\n"
+            s2 = q_text + o_text + a_text
+            
         s1 = i_text + 'Video:'
         t1 = [self.bos_id] + self.sp_model.encode(s1)
         video_start = len(t1)
-
-        s2 = q_text + o_text + a_text
 
         if split == 'train':
             s2 = s2 + answer_mapping[answer] 
@@ -65,16 +70,20 @@ class Tokenizer:
         return t, prefix_index, video_start
 
     def encode_vaq(self, text=None, max_feats=10, split='train', answer_mapping=None, answer=None) -> List[int]:
-        i_text = "Instruction: Predict the question based on the video and answer.\n"
         q_text = text['q_text'].strip()
         o_text = text['o_text']
         a_text = text['a_text']
-        
+        if 'h_text' in text:
+            h_text = text['h_text']
+            i_text = "Instruction: Predict the question based on the answer and video with hint.\n"
+            s2 = h_text + o_text + a_text
+        else:
+            i_text = "Instruction: Predict the question based on the video and answer.\n"
+            s2 = o_text + a_text
+            
         s1 = i_text + 'Video:'
         t1 = [self.bos_id] + self.sp_model.encode(s1)
         video_start = len(t1)
-        
-        s2 = o_text + a_text
         
         if split == 'train':
             s2 = s2 + answer_mapping[answer] + "\n" + q_text
@@ -90,12 +99,16 @@ class Tokenizer:
         return t, prefix_index, video_start
     
     def encode_qav(self, text=None, max_feats=10, split='train', answer_mapping=None, answer=None) -> List[int]:
-        i_text = "Instruction: Predict the video based on the question and answer.\n"
         q_text = text['q_text']
         o_text = text['o_text']
         a_text = text['a_text']
-        
-        s1 = i_text + q_text + o_text + a_text
+        if 'h_text' in text:
+            h_text = text['h_text']
+            i_text = "Instruction: Predict the video based on the answer and question with hint.\n"
+            s1 = i_text + q_text + h_text + o_text + a_text
+        else:
+            i_text = "Instruction: Predict the video based on the question and answer.\n"
+            s1 = i_text + q_text + o_text + a_text
         
         if split == 'train':
             s1 = s1 + answer_mapping[answer] + "\n" + "Video:"

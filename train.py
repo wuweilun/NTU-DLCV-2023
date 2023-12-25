@@ -68,7 +68,9 @@ def get_args_parser():
 
     # video encoder parameters
     parser.add_argument('--video_encoder', default='clipvitl14', type=str, help='video encoder')
-
+    
+    # hint json file
+    parser.add_argument('--hint_data', default=None, type=str, help='path of hint json')
     return parser
 
 

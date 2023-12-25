@@ -6,6 +6,11 @@ class STAR(BaseDataset):
     def __init__(self, args=None, tokenizer=None, split='train'):
         super().__init__(args, tokenizer, split)
         self.data = json.load(open(f'./data/star/STAR_{split}.json', 'r'))
+        if args.hint_data is not None:
+            with open(args.hint_data, "r") as json_file:
+                self.hint = json.load(json_file)
+        else:
+            self.hint = None
         self.video_encoder = args.video_encoder
         if self.video_encoder == 'clipvitl14':
             self.features = torch.load(f'./data/star/clipvitl14.pth')
@@ -15,6 +20,10 @@ class STAR(BaseDataset):
         self.qtype_mapping = {'Interaction': 1, 'Sequence': 2, 'Prediction': 3, 'Feasibility': 4}
         self.num_options = 4
         self.split = split
+        # qid = "Interaction_T1_4"
+        # hint_idx_text = self.hint[qid].capitalize().strip()
+        # h_text = f"Hint: The description of the first frame is {hint_idx_text}\n"
+        # print(h_text)pac
         print(f"Num {split} data: {len(self.data)}") 
 
     def _get_text(self, idx):
@@ -33,7 +42,14 @@ class STAR(BaseDataset):
         for i in range(self.num_options):
             o_text += f"{self.answer_mapping[i]} {options[i]}\n"
         a_text = "Answer: The answer is "
-        text = {'q_text': q_text, 'o_text': o_text, 'a_text': a_text, 'options': options}
+        
+        if self.hint is not None:
+            qid = self.data[idx]['question_id']
+            hint_idx_text = self.hint[qid].capitalize().strip()
+            h_text = f"Hint: The description of the first frame is {hint_idx_text}\n"
+            text = {'q_text': q_text, 'o_text': o_text, 'a_text': a_text, 'options': options, 'h_text': h_text}
+        else:
+            text = {'q_text': q_text, 'o_text': o_text, 'a_text': a_text, 'options': options}
         return text, answer
 
     def _get_video(self, video_id, start, end):
