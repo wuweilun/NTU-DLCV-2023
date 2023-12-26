@@ -47,7 +47,7 @@ class Tokenizer:
             i_text = "Instruction: Predict the answer based on the video and question with hint.\n"
             h_text = text['h_text']
             s2 = q_text + h_text + o_text + a_text
-            print(s2)
+            # print(s2)
         else: 
             i_text = "Instruction: Predict the answer based on the video and question.\n"
             s2 = q_text + o_text + a_text
@@ -102,13 +102,16 @@ class Tokenizer:
         q_text = text['q_text']
         o_text = text['o_text']
         a_text = text['a_text']
-        if 'h_text' in text:
-            h_text = text['h_text']
-            i_text = "Instruction: Predict the video based on the answer and question with hint.\n"
-            s1 = i_text + q_text + h_text + o_text + a_text
-        else:
-            i_text = "Instruction: Predict the video based on the question and answer.\n"
-            s1 = i_text + q_text + o_text + a_text
+        # if 'h_text' in text:
+        #     h_text = text['h_text']
+        #     i_text = "Instruction: Predict the video based on the answer and question with hint.\n"
+        #     s1 = i_text + q_text + h_text + o_text + a_text
+        # else:
+        #     i_text = "Instruction: Predict the video based on the question and answer.\n"
+        #     s1 = i_text + q_text + o_text + a_text
+
+        i_text = "Instruction: Predict the video based on the question and answer.\n"
+        s1 = i_text + q_text + o_text + a_text
         
         if split == 'train':
             s1 = s1 + answer_mapping[answer] + "\n" + "Video:"
