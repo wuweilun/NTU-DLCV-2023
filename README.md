@@ -44,5 +44,17 @@ unzip checkpoint.zip
 ```
 
 # Inference
+## Method: LLAMA + Hint +Voting
+```bash
+bash inference.sh
+```
+We use a combination of different model settings to achieve better results.
+
+The output json file named "voting_result.json" will be in the root directory
+
+### Result
+|Int_Acc| Seq_Acc | Pre_Acc | Fea_Acc | Mean |
+|-----|-----|-----|-----|-----|
+|65.51|68.07|58.66|50.09|60.58|
 
 # Train
