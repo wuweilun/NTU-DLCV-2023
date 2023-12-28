@@ -14,4 +14,4 @@ python3 test.py --model 7B --max_seq_len 128 --batch_size 1 --epochs 5 --warmup_
 python3 test.py --model 7B --max_seq_len 228 --batch_size 1 --epochs 5 --warmup_epochs 2 --bias 3 --tau 100. --max_feats 10 --dataset star --blr 9e-2 --weight_decay 0.16 --output_dir ./output_dir --accum_iter 8 --vaq --qav --resume 'checkpoint_best_hint.pth' --filename hint_5277 --hint_data hint.json
 
 # Voting 
-python3 voting.py output_dir
+python3 voting.py output_dir/voting_5988.json output_dir/llama_epoch10.json ./output_dir/hint_5277.json 
