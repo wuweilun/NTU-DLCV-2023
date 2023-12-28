@@ -144,10 +144,10 @@ def main(args):
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Test time {}'.format(total_time_str))
-    with open(f'{args.filename}.json', 'w') as json_file:
+    with open(f'{args.output_dir}/{args.filename}.json', 'w') as json_file:
         json.dump(all_predictions, json_file, indent=2)
-    with open(f'{args.filename}_prob.json', 'w') as json_file:
-        json.dump(all_predictions_prob, json_file, indent=2)
+    # with open(f'{args.filename}_prob.json', 'w') as json_file:
+    #     json.dump(all_predictions_prob, json_file, indent=2)
 
 if __name__ == '__main__':
     args = get_args_parser()
