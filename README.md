@@ -1,45 +1,42 @@
-# DLCV Final Project ( STAR )
-
-# How to run your code?
-* TODO: Please provide the scripts for TAs to reproduce your results, including training and inference. For example, 
-```shell script=
-bash train.sh <Path to videos folder> <annotation file> [additional path(s)...]
-bash inference.sh <Path to videos folder> <annotation file>
+# Setup
+For convenience, we have provided a bash script that can execute all the commands below at once. If there are any issues, please confirm each step individually. 
+```bash
+sh all_setup.sh
 ```
-* For the **training code**, feel free to add extra paths to your training script if you want to use additional data such as bounding boxes or hyper-graphs.
-* You can modify `.gitignore` file to avoid uploading your data
 
-# Usage
-To start working on this final project, you should clone this repository into your local machine by the following command:
+### Environment (Conda)
+Please use following codes to set up your environment.
+```bash
+conda create -n flipped-vqa python=3.8
+conda activate flipped-vqa
+sh ./DLCV-Fall-2023-Final-1-catchingstar/setup.sh
+pip install gdown
+```
+If you get error on `setup.sh`, please find newer version in torch because 30xx or 40xx GPU seems need higher version and change the first line in `setup.sh`.
+Following is an example:
+```bash
+pip install torch==1.11.0+cu113 torchvision==0.12.0+cu113 torchaudio==0.11.0 --extra-index-url https://download.pytorch.org/whl/cu113
+```
 
-    git clone https://github.com/ntudlcv/DLCV-Fall-2023-Final-1-<team name>.git
-  
-Note that you should replace `<team_name>` with your own team name.
+### Dataset
+Please use following codes to set up datasets.
+```bash
+gdown 1LeMob-x5z2zKMadL4BRJWjBt7dJ-Bh7d -O data.zip
+unzip ./data.zip
+```
 
-For more details, please click [this link](https://docs.google.com/presentation/d/1TsR0l84wWNNWH7HaV-FEPFudr3o9mVz29LZQhFO22Vk/edit?usp=sharing) to view the slides of Final Project - STAR Benchmark. **Note that video and introduction pdf files for final project can be accessed in your NTU COOL.**
+### Pretrained Weight (LLAMA)
+Please make share your device already install java to use `jar` command and use following codes to download pretrained weights.
+```bash
+gdown 1ORokvQINUC-aVIPsomJeHW2rotSgiCSv -O pretrained.zip
+jar xvf pretrained.zip
+```
+If you can’t download pretrained.zip, please download this link directly:
+https://drive.google.com/file/d/1ORokvQINUC-aVIPsomJeHW2rotSgiCSv/view
 
-# Dataset Overview
-The following files are required for use in your training process.
-
-### Question, Multiple Choice Answers and Situation Graphs
-
-* Questions and Answers (.json) : [Train](https://star-benchmark.s3.us-east.cloud-object-storage.appdomain.cloud/Question_Answer_SituationGraph/STAR_train.json) [Val](https://star-benchmark.s3.us-east.cloud-object-storage.appdomain.cloud/Question_Answer_SituationGraph/STAR_val.json) [Test](https://star-benchmark.s3.us-east.cloud-object-storage.appdomain.cloud/Question_Answer_SituationGraph/STAR_test.json)
-* Split file (Optional): [Train/Val/Test Split File (.json)](https://star-benchmark.s3.us-east.cloud-object-storage.appdomain.cloud/Question_Answer_SituationGraph/split_file.json)
-
-### Video Data  
-* [raw video data](https://prior.allenai.org/projects/charades): recommend: Data(scaled up to 480p)
-
-If you want to use additional data such as bounding boxes, hyper-graphs, ..., please refer to the following links for more information.
-* [Star Official Website](https://bobbywu.com/STAR/#repo)
-* [GitHub](https://github.com/csbobby/STAR_Benchmark)
-
-
-# Submission Rules
-### Deadline
-112/12/28 (Thur.) 23:59 (GMT+8)
-    
-# Q&A
-If you have any problems related to Final Project, you may
-- Use TA hours
-- Contact TAs by e-mail ([ntudlcv@gmail.com](mailto:ntudlcv@gmail.com))
-- Post your question under Final Project FAQ section in NTU Cool Discussion
+### Our Pretrained Weight
+Please use following codes to download our pretrained weights.
+```bash
+gdown 1M0CaR4rtOt3iEGAz7ykRtEJdkTmO5nv6 -O checkpoint.zip
+unzip checkpoint.zip
+```
