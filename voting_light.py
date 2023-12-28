@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 with open('origin.json', 'r') as file1:
     data1 = json.load(file1)
@@ -14,6 +15,8 @@ feasibility_data = data2.get("Feasibility", [])
 
 # Merge the data
 merged_data = {"Interaction": interaction_data, "Sequence": sequence_data, "Prediction": prediction_data, "Feasibility": feasibility_data}
+
+Path('./output_dir').mkdir(parents=True, exist_ok=True)
 
 # Write the merged data into a new JSON file
 with open('./output_dir/voting_5988.json', 'w') as merged_file:
