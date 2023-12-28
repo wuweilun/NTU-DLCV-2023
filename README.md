@@ -2,7 +2,7 @@
 ## Option 1: Quickly setup
 For convenience, we provide a bash script that can execute all the commands below at once. If there are any issues, please confirm each step individually.  
 
-Please make share your device already install java to use `jar` command and use following codes to download pretrained weights.
+Please make sure your device already install java to use `jar` command and use following codes to download pretrained weights.
 ```bash
 conda create -n flipped-vqa python=3.8
 conda activate flipped-vqa
@@ -58,3 +58,18 @@ The output json file named "voting_result.json" will be in the root directory
 |65.51|68.07|58.66|50.09|60.58|
 
 # Train
+We train three main model design with several settings. The following provides the best setting of each model.
+### LLAMA-1 7B (vqa + vaq + qav)
+```bash
+python3 train.py --llama_model_path ./pretrained/llama/ --model 7B --max_seq_len 128 --batch_size 1 --epochs 5 --warmup_epochs 2 --bias 3 --tau 100. --max_feats 10 --dataset star --blr 9e-2 --weight_decay 0.16 --output_dir ./checkpoint/star --accum_iter 8 --vaq --qav
+```
+
+### LLAMA-2 7B (vqa + vaq + qav)
+```bash
+python3 train.py --llama_model_path ./pretrained/llama2/ --model llama-2-7b --max_seq_len 128 --batch_size 1 --epochs 5 --warmup_epochs 2 --bias 3 --tau 100. --max_feats 10 --dataset star --blr 9e-2 --weight_decay 0.16 --output_dir ./checkpoint/star --accum_iter 8 --vaq --qav
+```
+
+### LLAMA-1 7B with hint (vqa + vaq + qav)
+```bash
+python3 train.py --llama_model_path ./pretrained/llama/ --model 7B --max_seq_len 228 --batch_size 1 --epochs 10 --warmup_epochs 2 --bias 3 --tau 100. --max_feats 10 --dataset star --blr 9e-2 --weight_decay 0.16 --output_dir ./checkpoint/star --accum_iter 8 --vaq --qav --hint_data hint.json
+```
