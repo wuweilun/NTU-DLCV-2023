@@ -1,0 +1,20 @@
+# Ignore the dataset folder
+# IMPORTANT: make sure that your dataset is stored in a
+# folder with the same name as the one specified below!
+
+student_data/*
+sample_submission.json
+data/*
+pretrained/*
+checkpoint/*
+*/__pycache__/*
+/__pycache__/*
+
+# utils for checking json files and pth files
+look_json.py
+look_pth.py
+
+# InternVideo
+InternVid/viclip/__pycache__/*
+*.pth
+InternVid/viclip/*.gz
