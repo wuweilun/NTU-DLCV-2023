@@ -1,0 +1,14 @@
+#Ignore the dataset
+#IMPORTANT: make sure that your dataset is stored in a folder with the same as the one specified below
+
+dataset/*
+dataset.zip
+
+__pycache__/*
+lightning_logs/*
+
+utils/__pycache__/*
+models/__pycache__/*
+ckpts/*
+results/*
+bash_output/*
